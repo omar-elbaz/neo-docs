@@ -1,0 +1,105 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  documents Document[]
+  sharedDocuments DocumentShare[]
+
+  @@map("users")
+}
+
+model Document {
+  id          String        @id @default(cuid())
+  title       String
+  content     String?
+  filePath    String?
+  fileSize    Int?
+  isShared    Boolean       @default(false)
+  isArchived  Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  authorId    String
+  author      User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  shares      DocumentShare[]
+  tags        DocumentTag[]
+  versions    DocumentVersion[]
+
+  @@map("documents")
+}
+
+model DocumentShare {
+  id         String   @id @default(cuid())
+  permission SharePermission @default(READ)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, userId])
+  @@map("document_shares")
+}
+
+model DocumentTag {
+  id        String   @id @default(cuid())
+  name      String
+  color     String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  documents Document[]
+
+  @@unique([name])
+  @@map("document_tags")
+}
+
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  version     Int
+  content     String?
+  filePath    String?
+  fileSize    Int?
+  mimeType    String?
+  changeLog   String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, version])
+  @@map("document_versions")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  GUEST
+}
+
+enum SharePermission {
+  READ
+  WRITE
+  ADMIN
+}
