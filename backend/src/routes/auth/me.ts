@@ -1,5 +1,6 @@
 // get current user
 // backend/src/routes/auth/me.ts
+
 import { FastifyInstance } from "fastify";
 import { getUserFromToken } from "../../utils/auth";
 

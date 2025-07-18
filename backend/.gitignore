@@ -1,0 +1,5 @@
+# Most ignores are handled in the root .gitignore
+# Add backend-specific ignores below
+
+prisma/.env
+node_modules/

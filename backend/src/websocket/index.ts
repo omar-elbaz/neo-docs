@@ -2,7 +2,6 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { app } from "../server";
 
-// TODO: firgure out setup ... should this be here or in main server entrypoint
 const server = createServer(app.server);
 export const io = new Server(server, {
   cors: { origin: "*" },
