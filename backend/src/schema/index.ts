@@ -6,7 +6,9 @@ export const JwtPayloadSchema = z.object({
 });
 
 export const LoginSchema = z.object({
-  email: z.string().email(),
+  email: z
+    .string()
+    .email("Please enter a valid email address (e.g., user@example.com)"),
   password: z.string().min(1),
 });
 
@@ -15,16 +17,22 @@ export const RegisterSchema = LoginSchema;
 // Document Schemas
 export const CreateDocumentSchema = z.object({
   title: z.string().min(1),
-  content: z.string().optional(),
-  filePath: z.string().optional(),
-  fileSize: z.number().optional(),
+  content: z.any().optional(), // JSON content for rich text
 });
 
 export const UpdateDocumentSchema = z.object({
   title: z.string().min(1).optional(),
-  content: z.string().optional(),
+  content: z.any().optional(), // JSON content for rich text
   isShared: z.boolean().optional(),
   isArchived: z.boolean().optional(),
+  isPublic: z.boolean().optional(),
+  revisionId: z.string().optional(),
+});
+
+// Document sharing schema
+export const ShareDocumentSchema = z.object({
+  email: z.string().email(),
+  permission: z.enum(['READ', 'WRITE', 'ADMIN']),
 });
 
 // User Schemas
@@ -62,5 +70,6 @@ export type LoginRequest = z.infer<typeof LoginSchema>;
 export type RegisterRequest = z.infer<typeof RegisterSchema>;
 export type CreateDocumentRequest = z.infer<typeof CreateDocumentSchema>;
 export type UpdateDocumentRequest = z.infer<typeof UpdateDocumentSchema>;
+export type ShareDocumentRequest = z.infer<typeof ShareDocumentSchema>;
 export type UserResponse = z.infer<typeof UserResponseSchema>;
 export type DocumentResponse = z.infer<typeof DocumentResponseSchema>;

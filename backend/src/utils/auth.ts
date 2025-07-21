@@ -1,4 +1,4 @@
-import { JwtPayloadSchema, type JwtPayload } from "../schema";
+import { JwtPayloadSchema, type JwtPayload } from "../schema/index.ts";
 
 export const getUserFromToken = async (req: any): Promise<JwtPayload> => {
   await req.jwtVerify();

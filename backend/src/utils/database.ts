@@ -5,7 +5,18 @@ let prisma: PrismaClient;
 
 export const getPrismaClient = (): PrismaClient => {
   if (!prisma) {
-    prisma = new PrismaClient();
+    prisma = new PrismaClient({
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
+      // Configure connection pooling
+      log:
+        process.env.NODE_ENV === "development"
+          ? ["query", "error", "warn"]
+          : ["error"],
+    });
   }
   return prisma;
 };
