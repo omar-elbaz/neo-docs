@@ -349,3 +349,27 @@ If you encounter any issues or have questions:
 ---
 
 **Built with ❤️ using React, Fastify, and TypeScript**
+
+1. Migration service (recommended):
+
+# Run migrations first, then start app
+
+docker-compose -f docker-compose.prod.yml up migrate
+docker-compose -f docker-compose.prod.yml up backend frontend
+
+2. Manual migration:
+
+# Start db, run migration, then start app
+
+docker-compose -f docker-compose.prod.yml up -d db
+docker-compose -f docker-compose.prod.yml run --rm backend npx prisma migrate
+deploy
+docker-compose -f docker-compose.prod.yml up backend frontend
+
+3. CI/CD pipeline:
+   Run migrations as a separate step in your deployment pipeline before starting the
+   application containers.
+
+The production setup uses environment variables for secrets - create .env.prod:
+POSTGRES_PASSWORD=your_secure_password
+JWT_SECRET=your_secure_jwt_secret
