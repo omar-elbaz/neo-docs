@@ -13,21 +13,28 @@ import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import scribeLogo from "../assets/scribe-logo.jpg";
 import { apiClient } from "../lib/api";
-import styles from "./Login.module.css";
+import styles from "./Signup.module.css";
 
-export default function Login() {
+export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await apiClient.login(email, password);
+      const response = await apiClient.register(email, password);
 
       if (response.error) {
         throw new Error(response.error);
@@ -48,7 +55,7 @@ export default function Login() {
       ) {
         setError("Server returned invalid data format. Please try again.");
       } else {
-        setError(err instanceof Error ? err.message : "Login failed");
+        setError(err instanceof Error ? err.message : "Registration failed");
       }
     } finally {
       setLoading(false);
@@ -102,7 +109,7 @@ export default function Login() {
             gutterBottom
             sx={{ mb: 3 }}
           >
-            Login to Scribe
+            Create your account
           </Typography>
 
           {/* Error Alert */}
@@ -112,7 +119,7 @@ export default function Login() {
             </Alert>
           )}
 
-          {/* Login Form */}
+          {/* Signup Form */}
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               type="email"
@@ -132,6 +139,16 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              sx={{ mb: 3 }}
+            />
+            <TextField
+              type="password"
+              label="Confirm Password"
+              variant="outlined"
+              fullWidth
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
               sx={{ mb: 4 }}
             />
             <Button
@@ -150,19 +167,19 @@ export default function Login() {
                 mb: 3,
               }}
             >
-              {loading ? "Signing in..." : "Continue with email"}
+              {loading ? "Creating account..." : "Create account"}
             </Button>
           </Box>
 
-          {/* Sign up link */}
+          {/* Login link */}
           <Typography align="center" color="text.secondary">
-            Don't have an account?{" "}
+            Already have an account?{" "}
             <Link
               component={RouterLink}
-              to="/signup"
+              to="/login"
               sx={{ color: "primary.main" }}
             >
-              Sign up →
+              Login →
             </Link>
           </Typography>
         </Paper>

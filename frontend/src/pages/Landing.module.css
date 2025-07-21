@@ -3,6 +3,7 @@
   background-color: #f9fafb;
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 .headerLogo {
@@ -13,14 +14,12 @@
 
 .mainContent {
   flex: 1;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
+  padding: 20px;
   box-sizing: border-box;
 }
 
@@ -58,7 +57,6 @@
 
 @media (max-width: 600px) {
   .mainContent {
-    padding-left: 4px;
-    padding-right: 4px;
+    padding: 16px;
   }
 }
