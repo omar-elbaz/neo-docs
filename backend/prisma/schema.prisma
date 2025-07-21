@@ -21,6 +21,7 @@ model User {
   // Relations
   documents Document[]
   sharedDocuments DocumentShare[]
+  editedDocuments Document[] @relation("DocumentLastEditor")
 
   @@map("users")
 }
@@ -28,11 +29,15 @@ model User {
 model Document {
   id          String        @id @default(cuid())
   title       String
-  content     String?
-  filePath    String?
-  fileSize    Int?
+  content     Json?         // Rich document content (ProseMirror/similar format)
+  version     Int           @default(1) // Document version for operational transforms
+  revisionId  String        @default(cuid()) // For operational transforms
   isShared    Boolean       @default(false)
   isArchived  Boolean       @default(false)
+  isPublic    Boolean       @default(false)
+  deletedAt   DateTime?     // Soft delete timestamp
+  lastEditedBy String?
+  lastEditor  User?         @relation("DocumentLastEditor", fields: [lastEditedBy], references: [id])
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -41,7 +46,8 @@ model Document {
   author      User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   shares      DocumentShare[]
   tags        DocumentTag[]
-  versions    DocumentVersion[]
+  operations  DocumentOperation[]
+  activities  DocumentActivity[]
 
   @@map("documents")
 }
@@ -74,22 +80,34 @@ model DocumentTag {
   @@map("document_tags")
 }
 
-model DocumentVersion {
+model DocumentOperation {
   id          String   @id @default(cuid())
-  version     Int
-  content     String?
-  filePath    String?
-  fileSize    Int?
-  mimeType    String?
-  changeLog   String?
+  operation   Json     // Operational transform data
+  userId      String   // Who made the change
+  version     Int      // Document version this operation creates
+  timestamp   DateTime // When the operation occurred
+  revisionId  String   // Document revision this applies to
   createdAt   DateTime @default(now())
 
   // Relations
   documentId  String
   document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
-  @@unique([documentId, version])
-  @@map("document_versions")
+  @@map("document_operations")
+}
+
+model DocumentActivity {
+  id          String   @id @default(cuid())
+  type        String   // Activity type (user_join, user_leave, etc.)
+  userId      String   // User who performed the activity
+  timestamp   DateTime // When the activity occurred
+  createdAt   DateTime @default(now())
+
+  // Relations
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_activities")
 }
 
 enum UserRole {
