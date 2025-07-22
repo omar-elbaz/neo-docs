@@ -11,7 +11,9 @@ export const loginHandler = async (fastify: FastifyInstance) => {
     const body = LoginSchema.parse(req.body) as LoginRequest;
     const prisma = getPrismaClient();
 
-    const user = await prisma.user.findUnique({ where: { email: body.email } });
+    const user = await prisma.users.findUnique({
+      where: { email: body.email },
+    });
 
     if (!user) {
       console.log(

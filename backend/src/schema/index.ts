@@ -12,7 +12,10 @@ export const LoginSchema = z.object({
   password: z.string().min(1),
 });
 
-export const RegisterSchema = LoginSchema;
+export const RegisterSchema = LoginSchema.extend({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+});
 
 // Document Schemas
 export const CreateDocumentSchema = z.object({
@@ -45,8 +48,8 @@ export const UpdateUserSchema = z.object({
 export const UserResponseSchema = z.object({
   id: z.string(),
   email: z.string(),
-  name: z.string().nullable(),
-  avatar: z.string().nullable(),
+  firstName: z.string(),
+  lastName: z.string(),
   isActive: z.boolean(),
   createdAt: z.date(),
 });

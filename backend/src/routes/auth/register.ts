@@ -11,7 +11,7 @@ export default async function registerHandler(app: FastifyInstance) {
     const prisma = getPrismaClient();
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.users.findUnique({
       where: { email: body.email },
     });
 
@@ -24,10 +24,12 @@ export default async function registerHandler(app: FastifyInstance) {
 
     const hashed = await hashPassword(body.password);
 
-    const user = await prisma.user.create({
+    const user = await prisma.users.create({
       data: {
         email: body.email,
         password: hashed,
+        firstName: body.firstName,
+        lastName: body.lastName,
       },
     });
 
