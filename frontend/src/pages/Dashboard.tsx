@@ -54,7 +54,13 @@ export default function Dashboard() {
   const [newDocTitle, setNewDocTitle] = useState('')
   const [creating, setCreating] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
-  const [currentUser, setCurrentUser] = useState<{ id: string; email: string } | null>(null)
+  const [currentUser, setCurrentUser] = useState<{ 
+    id: string; 
+    email: string; 
+    firstName?: string;
+    lastName?: string;
+    fullName?: string;
+  } | null>(null)
 
   useEffect(() => {
     fetchDocuments()
@@ -78,7 +84,13 @@ export default function Dashboard() {
       }
 
       if (response.data) {
-        setCurrentUser({ id: response.data.userID, email: '' }) // Note: API only returns userID
+        setCurrentUser({ 
+          id: response.data.userID, 
+          email: response.data.email,
+          firstName: response.data.firstName,
+          lastName: response.data.lastName,
+          fullName: response.data.fullName
+        })
       }
     } catch (err) {
       console.error('Failed to fetch current user:', err)
@@ -171,7 +183,7 @@ export default function Dashboard() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Documents</h1>
               {currentUser && (
-                <p className="text-gray-600 mt-1">Welcome back, {currentUser.email}</p>
+                <p className="text-gray-600 mt-1">Welcome back, {currentUser.fullName || `${currentUser.firstName} ${currentUser.lastName}` || currentUser.email}</p>
               )}
             </div>
             <div className="flex items-center gap-4">
@@ -206,10 +218,13 @@ export default function Dashboard() {
               </div>
               
               <button
-                onClick={() => setShowCreateModal(true)}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                onClick={() => navigate('/user')}
+                className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                title={currentUser?.fullName || currentUser?.email || 'User Profile'}
               >
-                + New Document
+                <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
               </button>
             </div>
           </div>
