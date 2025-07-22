@@ -1,375 +1,344 @@
-# Neo Takehome - Collaborative Document Editor
+# Neo-Docs - Collaborative Document Editor
 
-A full-stack collaborative document editor built with React, Fastify, and real-time editing capabilities. This project demonstrates modern web development practices with TypeScript, real-time collaboration, and a clean architecture.
+A full-stack collaborative document editor built with React, Fastify, and real-time editing capabilities. This project demonstrates modern web development practices with TypeScript, event-driven architecture, and real-time collaboration.
+
+## 🏗️ System Architecture
+
+```
+┌─────────────────┐    WebSocket     ┌──────────────────┐
+│  React Frontend │ ←──────────────→ │  Fastify Server  │
+│   (Material-UI) │    Socket.IO     │   (WebSocket)    │
+└─────────────────┘                  └──────────────────┘
+                                              │
+                                              │ HTTP API
+                                              ▼
+                                     ┌──────────────────┐
+                                     │   PostgreSQL     │
+                                     │    Database      │
+                                     └──────────────────┘
+                                              ▲
+                                              │
+┌─────────────────┐    Consume       ┌──────────────────┐
+│  Kafka Worker   │ ←──────────────── │   Apache Kafka   │
+│  (Persistence)  │     Messages     │  (Event Queue)   │
+└─────────────────┘                  └──────────────────┘
+                                              ▲
+                                              │ Publish
+                                              │ Events
+                                     ┌──────────────────┐
+                                     │  WebSocket       │
+                                     │  Event Handler   │
+                                     └──────────────────┘
+```
 
 ## 🚀 Features
 
 ### Core Features
-
 - **Real-time collaborative editing** with multiple users
 - **User authentication** with JWT and bcrypt
-- **Document CRUD operations** with permissions
-- **Live cursor tracking** and presence indicators
-- **Edit history** with version control
-- **Invite and collaboration** features
+- **Document CRUD operations** with sharing permissions
+- **Live cursor tracking** and user presence indicators
+- **Event-driven architecture** with Kafka for reliability
+- **Rich text editing** with TipTap/ProseMirror
 - **Responsive design** for all devices
 
 ### Technical Features
-
 - **TypeScript** throughout the stack for type safety
-- **Real-time updates** using Socket.IO
+- **Real-time updates** using Socket.IO WebSockets
+- **Event sourcing** with Kafka message queue
 - **Database persistence** with Prisma ORM
-- **Modern UI** with Tailwind CSS and shadcn/ui
-- **Rich text editing** with TipTap editor
+- **Modern UI** with Material-UI components
 - **Protected routes** and authentication middleware
-- **Validation** with Zod schemas
+- **Schema validation** with Zod
 
 ## 🛠️ Technology Stack
 
 ### Frontend
-
 - **React 18** with Vite + TypeScript
-- **Tailwind CSS** for styling
-- **shadcn/ui** (Radix UI + Tailwind) for components
-- **socket.io-client** for real-time communication
+- **Material-UI** for component library
+- **TipTap/ProseMirror** for rich text editing
+- **Socket.IO Client** for real-time communication
 - **Zod** for form validation
-- **TipTap** for rich text editing
+- **React Router** for navigation
 
 ### Backend
-
 - **Fastify** with TypeScript
-- **Prisma** with PostgreSQL
-- **Socket.IO** for real-time features
-- **fastify-jwt + bcrypt** for authentication
+- **Socket.IO** for WebSocket connections
+- **Prisma ORM** with PostgreSQL
+- **Apache Kafka** for event streaming
+- **JWT + bcrypt** for authentication
 - **Zod** for request validation
-- **Railway** for hosting
 
-## 📦 Installation
+### Infrastructure
+- **Docker** for containerization
+- **PostgreSQL** for primary database
+- **Apache Kafka** with Zookeeper for event streaming
+- **Prisma Studio** for database management
+
+## 📦 Setup Instructions
 
 ### Prerequisites
+- Node.js 18+
+- Docker & Docker Compose
+- Git
 
-- Node.js18
-- PostgreSQL database
-- Railway account (for hosting)
-
-### Setup
+### Development Setup
 
 1. **Clone the repository**
-
    ```bash
-   git clone https://github.com/yourusername/neo-takehome.git
-   cd neo-takehome
+   git clone https://github.com/yourusername/neo-docs.git
+   cd neo-docs
+   ```
+
+2. **Start the development environment**
+   ```bash
+   # Start all services (PostgreSQL, Kafka, Zookeeper, Backend, Frontend, Worker)
+   docker-compose -f docker-compose.dev.yml up
+   ```
+
+3. **Access the application**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:3001
+   - Prisma Studio: http://localhost:5555
+   - Kafka UI: http://localhost:8080
+
+### Manual Development Setup
+
+If you prefer to run services individually:
+
+1. **Environment Setup**
+   ```bash
+   # Backend environment (.env in backend/)
+   DATABASE_URL="postgresql://user:password@localhost:5432/neodocs"
+   JWT_SECRET="your-jwt-secret"
+   KAFKA_BROKERS="localhost:9092"
+   PORT=3001
    ```
 
 2. **Install dependencies**
-
-   ````bash
-   # Install backend dependencies
-   cd server
-   npm install
-
-   # Install frontend dependencies
-   cd ../client
-   npm install
-   ```3*Environment Setup**
    ```bash
-   # Backend (.env)
-   DATABASE_URL="postgresql://..."
-   JWT_SECRET=your-jwt-secret"
-   PORT=31
-
-   # Frontend (.env)
-   VITE_API_URL=http://localhost:301   VITE_SOCKET_URL=http://localhost:31```
-
-   ````
-
-3. **Database Setup**
-
-   ```bash
-   cd server
-   npx prisma generate
-   npx prisma db push
+   # Backend
+   cd backend
+   npm install
+   
+   # Frontend  
+   cd ../frontend
+   npm install
    ```
 
-4. **Start Development Servers**
-
+3. **Database Setup**
    ```bash
-   # Start backend (from server directory)
-   npm run dev
+   cd backend
+   npx prisma generate
+   npx prisma migrate dev
+   ```
 
-   # Start frontend (from client directory)
-   npm run dev
+4. **Start services**
+   ```bash
+   # Terminal 1: Start Kafka & PostgreSQL
+   docker-compose -f docker-compose.dev.yml up db kafka zookeeper
+   
+   # Terminal 2: Backend server
+   cd backend && npm run dev
+   
+   # Terminal 3: Kafka worker
+   cd backend && npm run worker
+   
+   # Terminal 4: Frontend
+   cd frontend && npm run dev
    ```
 
 ## 🏗️ Project Structure
 
 ```
-neo-takehome/
-├── client/                 # React frontend
-│   ├── public/
-│   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   ├── pages/         # Page components
-│   │   ├── context/       # React context providers
-│   │   ├── hooks/         # Custom React hooks
-│   │   ├── lib/           # Utility libraries
-│   │   ├── types/         # TypeScript type definitions
-│   │   └── App.tsx
-│   ├── tailwind.config.ts
-│   └── package.json
-├── server/                 # Fastify backend
-│   ├── src/
-│   │   ├── routes/        # API route handlers
-│   │   ├── plugins/       # Fastify plugins
-│   │   ├── websocket/     # Socket.IO handlers
-│   │   ├── schema/        # Zod validation schemas
-│   │   ├── utils/         # Utility functions
-│   │   └── index.ts       # Server entry point
+neo-docs/
+├── backend/                    # Fastify backend
 │   ├── prisma/
-│   │   ├── schema.prisma  # Database schema
-│   │   └── migrations/    # Database migrations
+│   │   ├── schema.prisma      # Database schema
+│   │   └── migrations/        # Database migrations
+│   ├── src/
+│   │   ├── routes/           # API route handlers
+│   │   │   ├── auth/         # Authentication routes
+│   │   │   └── documents.ts  # Document CRUD routes
+│   │   ├── websocket/        # Socket.IO handlers
+│   │   ├── services/         # Business logic & Kafka
+│   │   ├── schema/           # Zod validation schemas
+│   │   ├── utils/            # Utility functions
+│   │   ├── server.ts         # Fastify server setup
+│   │   └── worker.ts         # Kafka consumer worker
 │   └── package.json
-├── .env                    # Environment variables
-├── tsconfig.json
-├── package.json
-├── README.md
-├── .gitignore
-└── railway.json           # Railway deployment config
+├── frontend/                   # React frontend
+│   ├── src/
+│   │   ├── components/       # UI components
+│   │   ├── pages/           # Page components
+│   │   ├── lib/             # API client & utilities
+│   │   ├── types/           # TypeScript definitions
+│   │   └── main.tsx         # App entry point
+│   └── package.json
+├── docker-compose.dev.yml      # Development environment
+├── docker-compose.prod.yml     # Production environment
+└── README.md
 ```
 
-## 🎯 Implementation Plan
+## 🎯 Design Decisions
 
-### Day1: Auth + Setup
+### Event-Driven Architecture
+**Decision**: Use Kafka for document operations instead of direct database writes
+**Reasoning**: 
+- Ensures data consistency across multiple users
+- Provides audit trail of all document changes
+- Allows for future features like document history replay
+- Separates real-time collaboration from persistence concerns
 
-- ✅ Initialize Vite + Tailwind + shadcn/ui
-- ✅ Set up Fastify + socket.io + JWT
-- ✅ Connect Prisma to Railway PostgreSQL
-- ✅ Build login/register UI with Zod validation
-- ✅ Set up protected routes using JWT
+### WebSocket-First Updates
+**Decision**: Disable REST PUT endpoints for document updates
+**Reasoning**:
+- Forces all updates through real-time collaboration flow
+- Prevents conflicts between REST and WebSocket updates
+- Ensures all users see changes immediately
+- Simplifies state management
 
-### Day 2: Documents + Real-time
+### Separate Worker Process
+**Decision**: Run Kafka consumer as separate service from web server
+**Reasoning**:
+- Improves reliability - web server can restart without losing events
+- Better resource isolation for CPU-intensive operations
+- Easier to scale workers independently
+- Clean separation of concerns
 
-- ✅ Create document routes (CRUD)
-- ✅ Build document editor UI with TipTap
-- ✅ Add socket.io rooms and broadcast edits
-- ✅ Enforce permissions on backend
-- ✅ Add invite/collab features
+### Material-UI Over Custom Components
+**Decision**: Use Material-UI instead of custom component library
+**Reasoning**:
+- Faster development with pre-built components
+- Consistent design system
+- Built-in accessibility features
+- Good TypeScript support
 
-### Day 3: History + Polish
+## ⚖️ Tradeoffs & Improvements
 
-- ✅ Implement edit history sidebar
-- ✅ Add loading/error states
-- ✅ Polish UI and transitions
-- ✅ Finalize README (setup, architecture, AI usage)
-- ✅ Deploy frontend + backend on Railway
+### Current Tradeoffs
+
+1. **Complexity vs Reliability**
+   - **Tradeoff**: Added Kafka increases system complexity
+   - **Benefit**: Much better reliability and event ordering
+   - **Improvement**: Could add health checks and better error recovery
+
+2. **Memory Usage**
+   - **Tradeoff**: In-memory document state for WebSocket performance
+   - **Risk**: Memory leaks with many concurrent documents
+   - **Improvement**: Implement document state cleanup and LRU eviction
+
+3. **Real-time vs Consistency**
+   - **Tradeoff**: WebSocket updates are eventually consistent
+   - **Benefit**: Immediate user feedback
+   - **Improvement**: Add operational transforms for true conflict resolution
+
+### What I'd Improve With More Time
+
+1. **Testing Infrastructure**
+   - Add comprehensive unit, integration, and e2e tests
+   - Mock Kafka for testing
+   - Add WebSocket testing utilities
+
+2. **Performance Optimization**
+   - Implement virtual scrolling for large documents
+   - Add lazy loading and code splitting
+   - Optimize bundle size and loading times
+
+3. **Enhanced Collaboration**
+   - Add comment threads and annotations
+   - Implement proper operational transforms
+   - Add user presence indicators and cursor colors
+
+4. **Mobile Experience**
+   - Improve responsive design
+   - Add touch-friendly editing
+   - Consider PWA features
+
+5. **Production Features**
+   - Add monitoring and logging
+   - Implement rate limiting
+   - Add backup and disaster recovery
+   - User permission management UI
+
+## 🤖 How AI Was Used
+
+### Development Assistance
+- **Architecture Design**: Used AI to evaluate different approaches for real-time collaboration (WebRTC vs WebSocket, direct DB vs event sourcing)
+- **Code Generation**: Generated boilerplate for Prisma schemas, API routes, and React components
+- **Problem Solving**: Debugged complex issues with Kafka message ordering and WebSocket state management
+- **Documentation**: Generated comprehensive API documentation and setup instructions
+
+### Specific AI Contributions
+- Designed the Kafka event flow architecture
+- Generated TypeScript types from Prisma schema
+- Created Material-UI component patterns
+- Wrote Docker configuration for development environment
+- Generated test data and migration scripts
+
+### AI Limitations Encountered
+- Had to manually fine-tune WebSocket event handling
+- Required custom logic for document state synchronization
+- Needed to implement custom validation beyond what AI suggested
+- Database performance optimization required domain expertise
 
 ## 🔧 API Endpoints
 
 ### Authentication
-
-- `POST /auth/register` - User registration
+- `POST /auth/register` - User registration with names
 - `POST /auth/login` - User login
-- `GET /auth/me` - Get current user
+- `GET /auth/me` - Get current user profile
 
 ### Documents
-
-- `GET /documents` - List user's documents
+- `GET /documents` - List user's accessible documents
 - `POST /documents` - Create new document
 - `GET /documents/:id` - Get document by ID
-- `PUT /documents/:id` - Update document
-- `DELETE /documents/:id` - Delete document
-- `POST /documents/:id/invite` - Invite collaborator
+- `DELETE /documents/:id` - Delete document (owner only)
+- `POST /documents/:id/share` - Share document with user
 
 ### WebSocket Events
-
-- `join-document` - Join document room
-- `leave-document` - Leave document room
-- `document-edit` - Broadcast document changes
-- `cursor-move` - Broadcast cursor position
-
-## 🎨 UI Components
-
-### Core Components
-
-- **AuthForm** - Login/Register forms with validation
-- **DocumentEditor** - TipTap-based rich text editor
-- **DocumentList** - List of user's documents
-- **CollaboratorList** - Show active collaborators
-- **HistorySidebar** - Document edit history
-- **LoadingSpinner** - Loading states
-- **ErrorBoundary** - Error handling
-
-### Layout Components
-
-- **Header** - Navigation and user menu
-- **Sidebar** - Document navigation
-- **MainContent** - Editor area
-- **Modal** - Reusable modal component
+- `join-document` - Join document collaboration room
+- `leave-document` - Leave document room  
+- `document-operation` - Send document edit operation
+- `user-cursor` - Broadcast cursor position
+- `user-selection` - Broadcast text selection
 
 ## 🔐 Authentication Flow
 
-1 **Registration**: User creates account with email/password
-2**: User authenticates and receives JWT token 3. **Protected Routes**: Frontend checks JWT for access4 **API Requests**: Backend validates JWT on each request5eal-time**: Socket.IO uses JWT for room access
-
-## 📊 Database Schema
-
-```prisma
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String?
-  documents Document[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Document {
-  id          String   @id @default(cuid())
-  title       String
-  content     String   @default("")
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  collaborators User[] @relation("DocumentCollaborators")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-```
+1. **Registration**: User creates account with email/password and names
+2. **Login**: User authenticates and receives JWT token
+3. **Protected Routes**: Frontend checks JWT for page access
+4. **API Requests**: Backend validates JWT on each request
+5. **WebSocket**: Socket.IO uses JWT for room access and user identification
 
 ## 🚀 Deployment
 
-### Railway Deployment
+### Production Setup
+```bash
+# Production deployment with Docker
+docker-compose -f docker-compose.prod.yml up -d
 
-1. **Backend**: Connect GitHub repo to Railway
-   - Set build command: `npm install && npx prisma generate`
-   - Set start command: `npm start`
-   - Add environment variables2. **Frontend**: Deploy to Vercel
-   - Connect GitHub repo to Vercel
-   - Set build command: `npm run build`
-   - Set output directory: `dist`
+# Run database migrations
+docker-compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy
+```
 
 ### Environment Variables
-
 ```env
-# Backend (Railway)
-DATABASE_URL="postgresql://...
-JWT_SECRET=your-secret-key"
-PORT=31
+# Backend Production
+DATABASE_URL="postgresql://..."
+JWT_SECRET="secure-random-string"
+KAFKA_BROKERS="kafka:29092"
+NODE_ENV="production"
 
-# Frontend (Vercel)
-VITE_API_URL=https://your-backend.railway.app"
-VITE_SOCKET_URL=https://your-backend.railway.app"
+# Frontend Production  
+VITE_API_URL="https://your-api-domain.com"
+VITE_SOCKET_URL="https://your-api-domain.com"
 ```
-
-## 🧪 Testing
-
-```bash
-# Backend tests
-cd server
-npm test
-
-# Frontend tests
-cd client
-npm test
-
-# E2E tests
-npm run test:e2e
-```
-
-## 📝 Development Guidelines
-
-### Code Style
-
-- Use TypeScript for all files
-- Follow ESLint and Prettier configurations
-- Write meaningful commit messages
-- Add JSDoc comments for complex functions
-
-### Component Structure
-
-```typescript
-interface ComponentProps {
-  // Define props interface
-}
-
-const Component: React.FC<ComponentProps> = ({ prop1prop2 }) => {
-  // Component logic
-  return (
-    // JSX
-  );
-};
-
-export default Component;
-```
-
-### State Management
-
-- Use React hooks for local state
-- Use Context API for global state (auth, documents)
-- Keep state as close to where it's used as possible
-
-## 🔮 Future Enhancements
-
-### Planned Features
-
-- [ ] Real-time comments and annotations
-- [ ] Document templates
-- ] Export to PDF/Markdown
-- [ ] Advanced search functionality
-- [ ] Mobile app (React Native)
-
-### Performance Improvements
-
-- [ ] Virtual scrolling for large documents
-- [ ] Lazy loading of components
-- [ ] Web Workers for heavy operations
-- Service Worker for offline support
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
--TipTap](https://tiptap.dev/) - Rich text editor
-
-- [Fastify](https://www.fastify.io/) - Fast web framework
-- [Prisma](https://www.prisma.io/) - Database toolkit
-- [Socket.IO](https://socket.io/) - Real-time communication
-- [shadcn/ui](https://ui.shadcn.com/) - Beautiful UI components
-
-## 📞 Support
-
-If you encounter any issues or have questions:
-
-- Create an issue on GitHub
-- Check the documentation
-- Review the implementation plan
-
 ---
 
-**Built with ❤️ using React, Fastify, and TypeScript**
-
-1. Migration service (recommended):
-
-# Run migrations first, then start app
-
-docker-compose -f docker-compose.prod.yml up migrate
-docker-compose -f docker-compose.prod.yml up backend frontend
-
-2. Manual migration:
-
-# Start db, run migration, then start app
-
-docker-compose -f docker-compose.prod.yml up -d db
-docker-compose -f docker-compose.prod.yml run --rm backend npx prisma migrate
-deploy
-docker-compose -f docker-compose.prod.yml up backend frontend
-
-3. CI/CD pipeline:
-   Run migrations as a separate step in your deployment pipeline before starting the
-   application containers.
-
-The production setup uses environment variables for secrets - create .env.prod:
-POSTGRES_PASSWORD=your_secure_password
-JWT_SECRET=your_secure_jwt_secret
+**Built with ❤️ using React, Material-UI, Fastify, and Apache Kafka**
