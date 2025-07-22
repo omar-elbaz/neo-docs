@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { Server } from "socket.io";
 import { kafkaService } from "../services/kafka.ts";
+import { analyzeProseMirrorOperation, type ActivityType } from "../types/activity.ts";
+import { getPrismaClient } from "../utils/database.ts";
 
 // Store document states and operation queues
 const documentStates = new Map<
@@ -71,11 +73,34 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
 
       // Initialize document state if not exists
       if (!documentStates.has(docId)) {
-        documentStates.set(docId, {
-          version: 0,
-          content: null,
-          pendingOps: [],
-        });
+        try {
+          // Load document content from database
+          const prisma = getPrismaClient();
+          const document = await prisma.documents.findUnique({
+            where: { id: docId }
+          });
+          
+          console.log(`🔍 Loading document ${docId} from database:`, {
+            found: !!document,
+            version: document?.version,
+            contentType: typeof document?.content,
+            content: document?.content
+          });
+          
+          documentStates.set(docId, {
+            version: document?.version || 0,
+            content: document?.content || { type: 'doc', content: [{ type: 'paragraph' }] },
+            pendingOps: [],
+          });
+        } catch (error) {
+          console.error('Failed to load document content:', error);
+          // Fallback to empty state
+          documentStates.set(docId, {
+            version: 0,
+            content: { type: 'doc', content: [{ type: 'paragraph' }] },
+            pendingOps: [],
+          });
+        }
       }
 
       // Initialize user presence for document
@@ -93,6 +118,12 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
 
       // Send current document state to joining user
       const docState = documentStates.get(docId)!;
+      console.log(`📤 Sending document state to client:`, {
+        docId,
+        version: docState.version,
+        contentType: typeof docState.content,
+        content: docState.content
+      });
       socket.emit("document-state", {
         version: docState.version,
         content: docState.content,
@@ -109,6 +140,17 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
       } catch (error) {
         console.error("Failed to publish user join event to Kafka:", error);
       }
+
+      // Broadcast user joined activity for live history
+      io.to(docId).emit("document-activity", {
+        id: `join-${Date.now()}-${Math.random()}`,
+        documentId: docId,
+        userId,
+        type: "user_joined" as ActivityType,
+        timestamp: new Date(),
+        metadata: { socketId: socket.id },
+        description: `joined the document`,
+      });
 
       // Notify others of new user
       socket.to(docId).emit("user-joined", {
@@ -127,8 +169,9 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
         operation: any;
         version: number;
         userId: string;
+        content?: any;
       }) => {
-        const { docId, operation, version, userId } = data;
+        const { docId, operation, version, userId, content } = data;
         const docState = documentStates.get(docId);
 
         if (!docState) {
@@ -145,9 +188,17 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
         docState.version++;
         const timestamp = Date.now();
         
-        // Update document content by applying the operation
+        // Update document content - use complete content if available, otherwise apply operation
         console.log(`Before applying operation - docState.content:`, JSON.stringify(docState.content));
-        docState.content = applyOperationToContent(docState.content, operation);
+        if (content) {
+          // Use the complete document content sent by the client (preserves formatting)
+          console.log(`🔄 Using complete content from client:`, JSON.stringify(content));
+          docState.content = content;
+        } else {
+          // Fallback to applying ProseMirror steps (may lose formatting)
+          console.log(`⚠️  Falling back to ProseMirror step application`);
+          docState.content = applyOperationToContent(docState.content, operation);
+        }
         console.log(`After applying operation - docState.content:`, JSON.stringify(docState.content));
         
         docState.pendingOps.push({
@@ -157,6 +208,9 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
           timestamp,
         });
 
+        // Analyze operation for activity tracking
+        const activities = analyzeProseMirrorOperation(operation, userId);
+        
         // Publish to Kafka for persistence
         try {
           const kafkaMessage = {
@@ -167,11 +221,27 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
             operation,
             version: docState.version,
             timestamp,
+            activities, // Include parsed activities
           };
           console.log(`Publishing to Kafka with content:`, JSON.stringify(kafkaMessage.content));
           await kafkaService.publishDocumentOperation(kafkaMessage);
         } catch (error) {
           console.error("Failed to publish operation to Kafka:", error);
+        }
+
+        // Broadcast activities to clients for live history
+        if (activities.length > 0) {
+          for (const activity of activities) {
+            io.to(docId).emit("document-activity", {
+              id: `${timestamp}-${Math.random()}`, // Temporary ID
+              documentId: docId,
+              userId,
+              type: activity.type,
+              timestamp: new Date(timestamp),
+              metadata: activity.metadata,
+              description: activity.description,
+            });
+          }
         }
 
         // Broadcast operation to other clients in the room
@@ -259,6 +329,17 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
           socket.to(docId).emit("user-left", {
             userId: userInfo.userId,
             socketId: socket.id,
+          });
+
+          // Broadcast user left activity for live history
+          socket.to(docId).emit("document-activity", {
+            id: `leave-${Date.now()}-${Math.random()}`,
+            documentId: docId,
+            userId: userInfo.userId,
+            type: "user_left" as ActivityType,
+            timestamp: new Date(),
+            metadata: { socketId: socket.id },
+            description: `left the document`,
           });
         }
       }
