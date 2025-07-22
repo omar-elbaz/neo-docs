@@ -13,7 +13,13 @@ export default function DocumentEditorPage() {
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   // Removed isSaving state as content updates are now handled by WebSocket
-  const [currentUser, setCurrentUser] = useState<{ id: string; email: string } | null>(null)
+  const [currentUser, setCurrentUser] = useState<{ 
+    id: string; 
+    email: string; 
+    firstName?: string;
+    lastName?: string;
+    fullName?: string;
+  } | null>(null)
 
   useEffect(() => {
     if (!id) {
@@ -38,7 +44,13 @@ export default function DocumentEditorPage() {
       }
 
       if (response.data) {
-        setCurrentUser({ id: response.data.userID, email: '' })
+        setCurrentUser({ 
+          id: response.data.userID, 
+          email: response.data.email,
+          firstName: response.data.firstName,
+          lastName: response.data.lastName,
+          fullName: response.data.fullName
+        })
       }
     } catch (err) {
       console.error('Failed to fetch current user:', err)

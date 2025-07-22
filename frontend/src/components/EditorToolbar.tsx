@@ -1,41 +1,42 @@
-import React from "react";
 import {
-  IconButton,
-  Typography,
-  Avatar,
-  Tooltip,
-  Menu,
-  MenuItem,
-} from "@mui/material";
-import {
+  AccountCircle,
   FormatBold,
   FormatItalic,
   FormatListBulleted,
   FormatListNumbered,
-  AccountCircle,
   Logout,
   Settings,
 } from "@mui/icons-material";
+import {
+  Avatar,
+  IconButton,
+  Menu,
+  MenuItem,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import React from "react";
+import { useNavigate } from "react-router-dom";
 import type { EditorToolbarProps } from "../types/editor";
 import {
   AppHeaderContainer,
   AppHeaderContent,
-  LogoContainer,
-  ScribeLogo,
+  CollaboratorContainer,
+  CompactDivider,
+  CompactIconButton,
+  FormattingContainer,
+  FormattingToolbar,
   FormattingToolbarContainer,
   FormattingToolbarWrapper,
-  StyledFormattingAppBar,
-  FormattingToolbar,
-  TitleContainer,
-  StyledTextField,
+  LogoContainer,
+  ScribeLogo,
   StatusContainer,
   StatusDot,
   StatusText,
+  StyledFormattingAppBar,
+  StyledTextField,
+  TitleContainer,
   UserContainer,
-  CollaboratorContainer,
-  FormattingContainer,
-  CompactIconButton,
-  CompactDivider,
 } from "./styled/EditorComponents";
 
 export default function EditorToolbar({
@@ -48,6 +49,7 @@ export default function EditorToolbar({
   onTitleChange,
   onTitleSave,
 }: EditorToolbarProps) {
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -56,6 +58,12 @@ export default function EditorToolbar({
 
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setAnchorEl(null);
+    navigate("/login");
   };
 
   const isMenuOpen = Boolean(anchorEl);
@@ -71,16 +79,14 @@ export default function EditorToolbar({
         <AppHeaderContent>
           {/* Left: Logo and Document Title */}
           <TitleContainer>
-            <LogoContainer onClick={() => window.location.href = '/'}>
-              <ScribeLogo>
-                S
-              </ScribeLogo>
+            <LogoContainer onClick={() => (window.location.href = "/")}>
+              <ScribeLogo>S</ScribeLogo>
             </LogoContainer>
             <StyledTextField
               value={title}
               onChange={(e) => onTitleChange?.(e.target.value)}
               onBlur={() => onTitleSave?.()}
-              onKeyDown={(e) => e.key === 'Enter' && onTitleSave?.()}
+              onKeyDown={(e) => e.key === "Enter" && onTitleSave?.()}
               variant="standard"
               placeholder="Untitled Document"
             />
@@ -145,7 +151,11 @@ export default function EditorToolbar({
       {/* Formatting Toolbar - Centered, compact */}
       <FormattingToolbarContainer>
         <FormattingToolbarWrapper>
-          <StyledFormattingAppBar position="static" color="default" elevation={2}>
+          <StyledFormattingAppBar
+            position="static"
+            color="default"
+            elevation={2}
+          >
             <FormattingToolbar>
               <FormattingContainer>
                 {/* Text Formatting */}
@@ -184,7 +194,11 @@ export default function EditorToolbar({
                     }
                     size="small"
                   >
-                    <Typography variant="caption" fontWeight="bold" fontSize="0.5rem">
+                    <Typography
+                      variant="caption"
+                      fontWeight="bold"
+                      fontSize="0.5rem"
+                    >
                       H1
                     </Typography>
                   </CompactIconButton>
@@ -202,7 +216,11 @@ export default function EditorToolbar({
                     }
                     size="small"
                   >
-                    <Typography variant="caption" fontWeight="bold" fontSize="0.5rem">
+                    <Typography
+                      variant="caption"
+                      fontWeight="bold"
+                      fontSize="0.5rem"
+                    >
                       H2
                     </Typography>
                   </CompactIconButton>
@@ -220,7 +238,11 @@ export default function EditorToolbar({
                     }
                     size="small"
                   >
-                    <Typography variant="caption" fontWeight="bold" fontSize="0.5rem">
+                    <Typography
+                      variant="caption"
+                      fontWeight="bold"
+                      fontSize="0.5rem"
+                    >
                       H3
                     </Typography>
                   </CompactIconButton>
@@ -295,7 +317,7 @@ export default function EditorToolbar({
           <Settings fontSize="small" sx={{ mr: 1 }} />
           Settings
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem onClick={handleLogout}>
           <Logout fontSize="small" sx={{ mr: 1 }} />
           Logout
         </MenuItem>
