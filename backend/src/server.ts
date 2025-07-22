@@ -6,6 +6,7 @@ import { loginHandler } from "./routes/auth/login.ts";
 import { meHandler } from "./routes/auth/me.ts";
 import registerHandler from "./routes/auth/register.ts";
 import { documentHandlers } from "./routes/documents.ts";
+import { activityHandlers } from "./routes/activities.ts";
 import { registerSocketEvents } from "./websocket/index.ts";
 
 const app = Fastify();
@@ -29,6 +30,7 @@ await registerHandler(app);
 await loginHandler(app);
 await meHandler(app);
 await documentHandlers(app);
+await activityHandlers(app);
 
 // Start Fastify rest api server first
 await app.listen({ port: PORT, host: "0.0.0.0" });

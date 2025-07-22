@@ -18,6 +18,11 @@ export interface DocumentOperation {
   operation?: any;
   version: number;
   timestamp: number;
+  activities?: Array<{
+    type: string;
+    description: string;
+    metadata: any;
+  }>;
 }
 
 export interface DocumentEvent {
