@@ -47,7 +47,7 @@ export default function DashboardMUI() {
   const navigate = useNavigate();
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [newDocTitle, setNewDocTitle] = useState("");
@@ -122,7 +122,8 @@ export default function DashboardMUI() {
         setDocuments(response.data);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      console.error('Failed to fetch documents:', err);
+      setMessage("Failed to load documents. Please refresh the page.");
     } finally {
       setLoading(false);
     }
@@ -150,9 +151,8 @@ export default function DashboardMUI() {
         navigate(`/documents/${response.data.id}`);
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to create document"
-      );
+      console.error('Failed to create document:', err);
+      setMessage("Failed to create document. Please try again.");
     } finally {
       setCreating(false);
     }
@@ -252,9 +252,9 @@ export default function DashboardMUI() {
 
       {/* Content */}
       <Container maxWidth="xl" sx={{ py: 4 }}>
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
+        {message && (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            {message}
           </Alert>
         )}
 

@@ -21,15 +21,15 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setMessage("");
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setMessage("Passwords do not match");
       return;
     }
 
@@ -50,15 +50,8 @@ export default function Signup() {
         throw new Error("No token received");
       }
     } catch (err) {
-      // Handle Zod validation errors
-      if (
-        err instanceof Error &&
-        err.message.includes("Invalid response format")
-      ) {
-        setError("Server returned invalid data format. Please try again.");
-      } else {
-        setError(err instanceof Error ? err.message : "Registration failed");
-      }
+      console.error('Registration error:', err);
+      setMessage("Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -114,10 +107,10 @@ export default function Signup() {
             Create your account
           </Typography>
 
-          {/* Error Alert */}
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
+          {/* Message Alert */}
+          {message && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              {message}
             </Alert>
           )}
 

@@ -49,7 +49,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [documents, setDocuments] = useState<DocumentResponse[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newDocTitle, setNewDocTitle] = useState('')
   const [creating, setCreating] = useState(false)
@@ -120,7 +120,8 @@ export default function Dashboard() {
         setDocuments(response.data)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      console.error('Failed to fetch documents:', err)
+      setMessage('Failed to load documents. Please refresh the page.')
     } finally {
       setLoading(false)
     }
@@ -149,7 +150,8 @@ export default function Dashboard() {
         navigate(`/documents/${response.data.id}`)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create document')
+      console.error('Failed to create document:', err)
+      setMessage('Failed to create document. Please try again.')
     } finally {
       setCreating(false)
     }
@@ -233,10 +235,10 @@ export default function Dashboard() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600">{error}</p>
-          </div>
+        {message && (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            {message}
+          </Alert>
         )}
 
         {/* Grid View */}

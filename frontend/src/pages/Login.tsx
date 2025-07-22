@@ -18,12 +18,12 @@ import styles from "./Login.module.css";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setMessage("");
     setLoading(true);
 
     try {
@@ -41,15 +41,8 @@ export default function Login() {
         throw new Error("No token received");
       }
     } catch (err) {
-      // Handle Zod validation errors
-      if (
-        err instanceof Error &&
-        err.message.includes("Invalid response format")
-      ) {
-        setError("Server returned invalid data format. Please try again.");
-      } else {
-        setError(err instanceof Error ? err.message : "Login failed");
-      }
+      console.error('Login error:', err);
+      setMessage("Login failed. Please check your credentials and try again.");
     } finally {
       setLoading(false);
     }
@@ -105,10 +98,10 @@ export default function Login() {
             Login to Scribe
           </Typography>
 
-          {/* Error Alert */}
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
+          {/* Message Alert */}
+          {message && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              {message}
             </Alert>
           )}
 

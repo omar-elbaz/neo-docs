@@ -10,7 +10,7 @@ export default function DocumentEditorPage() {
   const navigate = useNavigate()
   const [document, setDocument] = useState<Document | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   // Removed isSaving state as content updates are now handled by WebSocket
   const [currentUser, setCurrentUser] = useState<{ 
@@ -80,7 +80,8 @@ export default function DocumentEditorPage() {
         setTitle(response.data.title)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      console.error('Failed to fetch document:', err)
+      setMessage('Failed to load document. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -112,11 +113,11 @@ export default function DocumentEditorPage() {
     )
   }
 
-  if (error) {
+  if (message) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
+          <p className="text-orange-600 mb-4">{message}</p>
           <button
             onClick={() => navigate('/')}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
