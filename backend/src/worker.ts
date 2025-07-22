@@ -74,7 +74,7 @@ class DocumentWorker {
 
     try {
       // Log user activity for analytics/audit
-      await prisma.documentActivity.create({
+      await prisma.document_activities.create({
         data: {
           documentId,
           userId,
@@ -89,10 +89,10 @@ class DocumentWorker {
 
   private async createDocument(documentId: string, userId: string, content: any, timestamp: number) {
     // Check if document already exists
-    const existing = await prisma.document.findUnique({ where: { id: documentId } });
+    const existing = await prisma.documents.findUnique({ where: { id: documentId } });
     
     if (!existing) {
-      await prisma.document.create({
+      await prisma.documents.create({
         data: {
           id: documentId,
           title: 'Untitled Document',
@@ -118,7 +118,7 @@ class DocumentWorker {
     }
 
     // Update document with the authoritative content from WebSocket
-    const updated = await prisma.document.update({
+    const updated = await prisma.documents.update({
       where: { id: documentId },
       data: {
         content: kafkaContent as any,
@@ -132,7 +132,7 @@ class DocumentWorker {
     
     // Optional: Still store operations for audit/analytics purposes (not for replay)
     try {
-      await prisma.documentOperation.create({
+      await prisma.document_operations.create({
         data: {
           documentId,
           userId,
@@ -149,7 +149,7 @@ class DocumentWorker {
   }
 
   private async deleteDocument(documentId: string, userId: string, timestamp: number) {
-    await prisma.document.update({
+    await prisma.documents.update({
       where: { id: documentId },
       data: {
         deletedAt: new Date(timestamp),

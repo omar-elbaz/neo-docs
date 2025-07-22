@@ -5,7 +5,7 @@ export const ensureDocumentOwnership = async (
   documentId: string,
   userId: string
 ) => {
-  const document = await prisma.document.findFirst({
+  const document = await prisma.documents.findFirst({
     where: {
       id: documentId,
       authorId: userId,
@@ -23,7 +23,7 @@ export const getDocumentsByUser = async (
   prisma: PrismaClient,
   userId: string
 ) => {
-  return prisma.document.findMany({
+  return prisma.documents.findMany({
     where: { authorId: userId },
     include: { author: true },
   });

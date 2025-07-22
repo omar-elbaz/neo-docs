@@ -9,9 +9,7 @@
 import type { FastifyInstance } from "fastify";
 import {
   CreateDocumentSchema,
-  UpdateDocumentSchema,
   type CreateDocumentRequest,
-  type UpdateDocumentRequest,
 } from "../schema/index.ts";
 import { getUserFromToken } from "../utils/auth.ts";
 import { getPrismaClient } from "../utils/database.ts";
@@ -25,14 +23,14 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
     const user = await getUserFromToken(req);
     const body = CreateDocumentSchema.parse(req.body) as CreateDocumentRequest;
 
-    const document = await prisma.document.create({
+    const document = await prisma.documents.create({
       data: {
         title: body.title,
         content: body.content || null,
         authorId: user.id,
       },
       include: {
-        author: { select: { id: true, email: true } },
+        users_documents_authorIdTousers: { select: { id: true, email: true } },
       },
     });
 
@@ -44,16 +42,19 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
   fastify.get("/documents", async (req, reply) => {
     const user = await getUserFromToken(req);
 
-    const documents = await prisma.document.findMany({
+    const documents = await prisma.documents.findMany({
       where: {
-        OR: [{ authorId: user.id }, { shares: { some: { userId: user.id } } }],
+        OR: [
+          { authorId: user.id },
+          { document_shares: { some: { userId: user.id } } },
+        ],
         isArchived: false,
       },
       include: {
-        author: { select: { id: true, email: true } },
-        shares: {
+        users_documents_authorIdTousers: { select: { id: true, email: true } },
+        document_shares: {
           include: {
-            user: { select: { id: true, email: true } },
+            users: { select: { id: true, email: true } },
           },
         },
       },
@@ -68,21 +69,23 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
     const user = await getUserFromToken(req);
     const { id } = req.params as { id: string };
 
-    const document = await prisma.document.findFirst({
+    const document = await prisma.documents.findFirst({
       where: {
         id,
         OR: [
           { authorId: user.id },
-          { shares: { some: { userId: user.id } } },
+          { document_shares: { some: { userId: user.id } } },
           { isPublic: true },
         ],
       },
       include: {
-        author: { select: { id: true, email: true } },
-        lastEditor: { select: { id: true, email: true } },
-        shares: {
+        users_documents_authorIdTousers: { select: { id: true, email: true } },
+        users_documents_lastEditedByTousers: {
+          select: { id: true, email: true },
+        },
+        document_shares: {
           include: {
-            user: { select: { id: true, email: true } },
+            users: { select: { id: true, email: true } },
           },
         },
       },
@@ -95,11 +98,12 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
     return reply.send(document);
   });
 
-  // Update document - DISABLED for event-driven architecture  
+  // Update document - DISABLED for event-driven architecture
   // All document updates should go through WebSocket → Kafka → Worker
   fastify.put("/documents/:id", async (req, reply) => {
-    return reply.status(405).send({ 
-      message: "Direct document updates are disabled. Use WebSocket for real-time collaboration." 
+    return reply.status(405).send({
+      message:
+        "Direct document updates are disabled. Use WebSocket for real-time collaboration.",
     });
   });
 
@@ -110,7 +114,7 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
 
     await ensureDocumentOwnership(prisma, id, user.id);
 
-    await prisma.document.delete({
+    await prisma.documents.delete({
       where: { id },
     });
 
@@ -129,7 +133,7 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
 
     await ensureDocumentOwnership(prisma, id, user.id);
 
-    const targetUser = await prisma.user.findUnique({
+    const targetUser = await prisma.users.findUnique({
       where: { email },
     });
 
@@ -137,7 +141,7 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
       return reply.status(404).send({ message: "User not found" });
     }
 
-    const share = await prisma.documentShare.upsert({
+    const share = await prisma.document_shares.upsert({
       where: {
         documentId_userId: {
           documentId: id,
@@ -151,7 +155,7 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
         permission,
       },
       include: {
-        user: { select: { id: true, email: true } },
+        users: { select: { id: true, email: true } },
       },
     });
 
