@@ -78,6 +78,22 @@ export const DeleteDocumentResponseSchema = z.object({
   success: z.boolean(),
 });
 
+export const ShareDocumentSchema = z.object({
+  email: z.string().email(),
+  permission: z.enum(['READ', 'WRITE', 'ADMIN']),
+});
+
+export const ShareDocumentResponseSchema = z.object({
+  id: z.string(),
+  documentId: z.string(),
+  userId: z.string(),
+  permission: z.enum(['READ', 'WRITE', 'ADMIN']),
+  users: z.object({
+    id: z.string(),
+    email: z.string(),
+  }),
+});
+
 // Type exports - matching backend exactly
 export type LoginRequest = z.infer<typeof LoginSchema>;
 export type RegisterRequest = z.infer<typeof RegisterSchema>;
@@ -90,6 +106,8 @@ export type DocumentResponse = z.infer<typeof DocumentResponseSchema>;
 export type DeleteDocumentResponse = z.infer<
   typeof DeleteDocumentResponseSchema
 >;
+export type ShareDocumentRequest = z.infer<typeof ShareDocumentSchema>;
+export type ShareDocumentResponse = z.infer<typeof ShareDocumentResponseSchema>;
 
 export interface ApiResponse<T = unknown> {
   data?: T;
@@ -244,6 +262,19 @@ class ApiClient {
         method: "DELETE",
       },
       DeleteDocumentResponseSchema
+    );
+  }
+
+  async shareDocument(id: string, data: ShareDocumentRequest) {
+    const requestData = ShareDocumentSchema.parse(data);
+
+    return this.request<ShareDocumentResponse>(
+      `/documents/${id}/share`,
+      {
+        method: "POST",
+        body: JSON.stringify(requestData),
+      },
+      ShareDocumentResponseSchema
     );
   }
 }

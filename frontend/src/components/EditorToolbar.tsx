@@ -4,8 +4,10 @@ import {
   FormatItalic,
   FormatListBulleted,
   FormatListNumbered,
+  History,
   Logout,
   Settings,
+  Share,
 } from "@mui/icons-material";
 import {
   Avatar,
@@ -48,6 +50,9 @@ export default function EditorToolbar({
   title = "Untitled Document",
   onTitleChange,
   onTitleSave,
+  onHistoryToggle,
+  isHistoryOpen = false,
+  onShareToggle,
 }: EditorToolbarProps) {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -135,6 +140,27 @@ export default function EditorToolbar({
                 )}
               </CollaboratorContainer>
             )}
+            
+            {/* Share Button */}
+            <Tooltip title="Share Document">
+              <IconButton 
+                onClick={onShareToggle}
+                size="small"
+              >
+                <Share sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+            
+            {/* History Button */}
+            <Tooltip title="Edit History">
+              <IconButton 
+                onClick={onHistoryToggle}
+                size="small"
+                color={isHistoryOpen ? "primary" : "default"}
+              >
+                <History sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
 
             {/* User Menu */}
             <Tooltip title="Account">

@@ -62,6 +62,9 @@ export interface EditorToolbarProps {
   title?: string;
   onTitleChange?: (title: string) => void;
   onTitleSave?: () => void;
+  onHistoryToggle?: () => void;
+  isHistoryOpen?: boolean;
+  onShareToggle?: () => void;
 }
 
 export interface Document {
