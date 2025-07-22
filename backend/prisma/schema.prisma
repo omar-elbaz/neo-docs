@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,114 +7,103 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  password  String
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+model DocumentToDocumentTag {
+  A             String
+  B             String
+  documents     documents     @relation(fields: [A], references: [id], onDelete: Cascade)
+  document_tags document_tags @relation(fields: [B], references: [id], onDelete: Cascade)
 
-  // Relations
-  documents Document[]
-  sharedDocuments DocumentShare[]
-  editedDocuments Document[] @relation("DocumentLastEditor")
-
-  @@map("users")
+  @@id([A, B], map: "_DocumentToDocumentTag_AB_pkey")
+  @@index([B], map: "_DocumentToDocumentTag_B_index")
+  @@map("_DocumentToDocumentTag")
 }
 
-model Document {
-  id          String        @id @default(cuid())
-  title       String
-  content     Json?         // Rich document content (ProseMirror/similar format)
-  version     Int           @default(1) // Document version for operational transforms
-  revisionId  String        @default(cuid()) // For operational transforms
-  isShared    Boolean       @default(false)
-  isArchived  Boolean       @default(false)
-  isPublic    Boolean       @default(false)
-  deletedAt   DateTime?     // Soft delete timestamp
-  lastEditedBy String?
-  lastEditor  User?         @relation("DocumentLastEditor", fields: [lastEditedBy], references: [id])
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  // Relations
-  authorId    String
-  author      User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  shares      DocumentShare[]
-  tags        DocumentTag[]
-  operations  DocumentOperation[]
-  activities  DocumentActivity[]
-
-  @@map("documents")
-}
-
-model DocumentShare {
-  id         String   @id @default(cuid())
-  permission SharePermission @default(READ)
-  createdAt  DateTime @default(now())
-
-  // Relations
-  documentId String
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+model document_activities {
+  id         String    @id
+  type       String
   userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timestamp  DateTime
+  createdAt  DateTime  @default(now())
+  documentId String
+  documents  documents @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model document_operations {
+  id         String    @id
+  operation  Json
+  userId     String
+  revisionId String
+  createdAt  DateTime  @default(now())
+  documentId String
+  timestamp  DateTime
+  version    Int
+  documents  documents @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model document_shares {
+  id         String          @id
+  permission SharePermission @default(READ)
+  createdAt  DateTime        @default(now())
+  documentId String
+  userId     String
+  documents  documents       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  users      users           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([documentId, userId])
-  @@map("document_shares")
 }
 
-model DocumentTag {
-  id        String   @id @default(cuid())
-  name      String
-  color     String?
-  createdAt DateTime @default(now())
-
-  // Relations
-  documents Document[]
-
-  @@unique([name])
-  @@map("document_tags")
+model document_tags {
+  id                    String                  @id
+  name                  String                  @unique
+  color                 String?
+  createdAt             DateTime                @default(now())
+  DocumentToDocumentTag DocumentToDocumentTag[]
 }
 
-model DocumentOperation {
-  id          String   @id @default(cuid())
-  operation   Json     // Operational transform data
-  userId      String   // Who made the change
-  version     Int      // Document version this operation creates
-  timestamp   DateTime // When the operation occurred
-  revisionId  String   // Document revision this applies to
-  createdAt   DateTime @default(now())
-
-  // Relations
-  documentId  String
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-  @@map("document_operations")
+model documents {
+  id                                  String                  @id
+  title                               String
+  isShared                            Boolean                 @default(false)
+  isArchived                          Boolean                 @default(false)
+  createdAt                           DateTime                @default(now())
+  updatedAt                           DateTime
+  authorId                            String
+  isPublic                            Boolean                 @default(false)
+  lastEditedBy                        String?
+  revisionId                          String
+  content                             Json?
+  deletedAt                           DateTime?
+  version                             Int                     @default(1)
+  DocumentToDocumentTag               DocumentToDocumentTag[]
+  document_activities                 document_activities[]
+  document_operations                 document_operations[]
+  document_shares                     document_shares[]
+  users_documents_authorIdTousers     users                   @relation("documents_authorIdTousers", fields: [authorId], references: [id], onDelete: Cascade)
+  users_documents_lastEditedByTousers users?                  @relation("documents_lastEditedByTousers", fields: [lastEditedBy], references: [id])
 }
 
-model DocumentActivity {
-  id          String   @id @default(cuid())
-  type        String   // Activity type (user_join, user_leave, etc.)
-  userId      String   // User who performed the activity
-  timestamp   DateTime // When the activity occurred
-  createdAt   DateTime @default(now())
-
-  // Relations
-  documentId  String
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-  @@map("document_activities")
-}
-
-enum UserRole {
-  ADMIN
-  USER
-  GUEST
+model users {
+  id                                      String            @id
+  email                                   String            @unique
+  password                                String
+  isActive                                Boolean           @default(true)
+  createdAt                               DateTime          @default(now())
+  updatedAt                               DateTime
+  firstName                               String?
+  lastName                                String?
+  document_shares                         document_shares[]
+  documents_documents_authorIdTousers     documents[]       @relation("documents_authorIdTousers")
+  documents_documents_lastEditedByTousers documents[]       @relation("documents_lastEditedByTousers")
 }
 
 enum SharePermission {
   READ
   WRITE
   ADMIN
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  GUEST
 }
