@@ -26,10 +26,12 @@ export default async function registerHandler(app: FastifyInstance) {
 
     const user = await prisma.users.create({
       data: {
+        id: crypto.randomUUID(),
         email: body.email,
         password: hashed,
-        firstName: body.firstName,
-        lastName: body.lastName,
+        firstName: body.firstName || undefined,
+        lastName: body.lastName || undefined,
+        updatedAt: new Date(),
       },
     });
 

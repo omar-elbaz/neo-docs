@@ -25,9 +25,12 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
 
     const document = await prisma.documents.create({
       data: {
+        id: crypto.randomUUID(),
         title: body.title,
         content: body.content || null,
         authorId: user.id,
+        updatedAt: new Date(),
+        revisionId: crypto.randomUUID(),
       },
       include: {
         users_documents_authorIdTousers: { select: { id: true, email: true } },
@@ -150,6 +153,7 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
       },
       update: { permission },
       create: {
+        id: crypto.randomUUID(),
         documentId: id,
         userId: targetUser.id,
         permission,

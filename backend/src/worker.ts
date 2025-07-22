@@ -44,7 +44,7 @@ class DocumentWorker {
   }
 
   private async handleDocumentOperation(operation: DocumentOperation) {
-    const { type, documentId, userId, content, operation: proseMirrorOp, version, timestamp } = operation;
+    const { type, documentId, userId, content, operation: proseMirrorOp, version, timestamp, activities } = operation;
 
     console.log(`Processing ${type} operation for document ${documentId} by user ${userId}`);
 
@@ -62,6 +62,26 @@ class DocumentWorker {
           await this.deleteDocument(documentId, userId, timestamp);
           break;
       }
+      // Store detailed activities from the operation
+      if (activities && activities.length > 0) {
+        for (const activity of activities) {
+          try {
+            await prisma.document_activities.create({
+              data: {
+                id: `${documentId}-${timestamp}-${Math.random().toString(36).substring(2, 11)}`,
+                documentId,
+                userId,
+                type: activity.type,
+                timestamp: new Date(timestamp),
+                // Store metadata as JSON string since we don't have a metadata field
+                // This could be enhanced with a proper metadata JSON field
+              }
+            });
+          } catch (activityError) {
+            console.error('Failed to store activity:', activityError);
+          }
+        }
+      }
     } catch (error) {
       console.error(`Failed to process ${type} operation:`, error);
     }
@@ -76,6 +96,7 @@ class DocumentWorker {
       // Log user activity for analytics/audit
       await prisma.document_activities.create({
         data: {
+          id: crypto.randomUUID(),
           documentId,
           userId,
           type: type.toLowerCase(),
@@ -100,6 +121,7 @@ class DocumentWorker {
           authorId: userId,
           lastEditedBy: userId,
           version: 1,
+          revisionId: crypto.randomUUID(),
           createdAt: new Date(timestamp),
           updatedAt: new Date(timestamp)
         }
@@ -117,6 +139,12 @@ class DocumentWorker {
       return;
     }
 
+    console.log(`💾 Saving content to database for document ${documentId}:`, {
+      contentType: typeof kafkaContent,
+      content: kafkaContent,
+      version
+    });
+
     // Update document with the authoritative content from WebSocket
     const updated = await prisma.documents.update({
       where: { id: documentId },
@@ -128,12 +156,13 @@ class DocumentWorker {
       }
     });
 
-    console.log(`Updated document ${documentId} to version ${version} with authoritative content from WebSocket`);
+    console.log(`✅ Updated document ${documentId} to version ${version} with authoritative content from WebSocket`);
     
     // Optional: Still store operations for audit/analytics purposes (not for replay)
     try {
       await prisma.document_operations.create({
         data: {
+          id: crypto.randomUUID(),
           documentId,
           userId,
           operation,
