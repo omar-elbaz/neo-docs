@@ -11,7 +11,10 @@ export const LoginSchema = z.object({
   password: z.string().min(1),
 });
 
-export const RegisterSchema = LoginSchema;
+export const RegisterSchema = LoginSchema.extend({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+});
 
 export const LoginResponseSchema = z.object({
   token: z.string(),
@@ -23,6 +26,11 @@ export const RegisterResponseSchema = z.object({
 
 export const MeResponseSchema = z.object({
   userID: z.string(),
+  id: z.string(),
+  email: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  fullName: z.string(),
 });
 
 // Document schemas - matching backend exactly
@@ -169,8 +177,8 @@ class ApiClient {
     );
   }
 
-  async register(email: string, password: string) {
-    const requestData = RegisterSchema.parse({ email, password });
+  async register(email: string, password: string, firstName: string, lastName: string) {
+    const requestData = RegisterSchema.parse({ email, password, firstName, lastName });
 
     return this.request<RegisterResponse>(
       "/auth/register",

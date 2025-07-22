@@ -16,6 +16,8 @@ import { apiClient } from "../lib/api";
 import styles from "./Signup.module.css";
 
 export default function Signup() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,7 +36,7 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const response = await apiClient.register(email, password);
+      const response = await apiClient.register(email, password, firstName, lastName);
 
       if (response.error) {
         throw new Error(response.error);
@@ -121,6 +123,24 @@ export default function Signup() {
 
           {/* Signup Form */}
           <Box component="form" onSubmit={handleSubmit}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+              <TextField
+                label="First Name"
+                variant="outlined"
+                fullWidth
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+              />
+              <TextField
+                label="Last Name"
+                variant="outlined"
+                fullWidth
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+              />
+            </Box>
             <TextField
               type="email"
               label="Email"
