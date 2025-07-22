@@ -126,5 +126,22 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
 
+  prisma-studio:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    environment:
+      DATABASE_URL: "postgresql://omarelbaz:password@db:5432/neodocs"
+    ports:
+      - "5555:5555"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: ["npx", "prisma", "studio", "--hostname", "0.0.0.0"]
+    restart: unless-stopped
+
 volumes:
   postgres_data_dev:
