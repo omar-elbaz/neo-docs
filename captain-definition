@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 2,
+  "dockerCompose": {
+    "version": "3.8",
+    "services": {
+      "$$cap_appname-db": {
+        "image": "postgres:15-alpine",
+        "environment": {
+          "POSTGRES_DB": "neodocs",
+          "POSTGRES_USER": "$$cap_postgres_user",
+          "POSTGRES_PASSWORD": "$$cap_postgres_password"
+        },
+        "volumes": [
+          "$$cap_appname-postgres-data:/var/lib/postgresql/data"
+        ],
+        "caproverExtra": {
+          "notExposeAsWebApp": "true"
+        }
+      },
+      "$$cap_appname-backend": {
+        "build": {
+          "context": "./backend",
+          "dockerfile": "Dockerfile.prod"
+        },
+        "environment": {
+          "DATABASE_URL": "postgresql://$$cap_postgres_user:$$cap_postgres_password@srv-captain--$$cap_appname-db:5432/neodocs",
+          "JWT_SECRET": "$$cap_jwt_secret",
+          "NODE_ENV": "production",
+          "AWS_ACCESS_KEY_ID": "$$cap_aws_access_key",
+          "AWS_SECRET_ACCESS_KEY": "$$cap_aws_secret_key",
+          "AWS_REGION": "$$cap_aws_region",
+          "S3_BUCKET_NAME": "$$cap_s3_bucket"
+        },
+        "depends_on": [
+          "$$cap_appname-db"
+        ],
+        "caproverExtra": {
+          "containerHttpPort": "3001"
+        }
+      },
+      "$$cap_appname-frontend": {
+        "build": {
+          "context": "./frontend",
+          "dockerfile": "Dockerfile.prod"
+        },
+        "environment": {
+          "VITE_API_URL": "https://$$cap_appname-backend.$$cap_root_domain"
+        },
+        "depends_on": [
+          "$$cap_appname-backend"
+        ],
+        "caproverExtra": {
+          "containerHttpPort": "80"
+        }
+      }
+    },
+    "volumes": {
+      "$$cap_appname-postgres-data": {}
+    }
+  }
+}
