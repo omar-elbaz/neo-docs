@@ -1,0 +1,53 @@
+{
+  "services": [
+    {
+      "name": "backend",
+      "dockerfilePath": "backend/Dockerfile.prod",
+      "context": "./backend",
+      "port": 3001,
+      "envs": [
+        { "key": "DATABASE_URL", "value": "{{RAILWAY_DATABASE_URL}}" },
+        { "key": "JWT_SECRET", "value": "<your-jwt-secret>" },
+        { "key": "KAFKA_BROKERS", "value": "<your-external-kafka-broker>" },
+        { "key": "AWS_ACCESS_KEY_ID", "value": "<your-aws-access-key-id>" },
+        {
+          "key": "AWS_SECRET_ACCESS_KEY",
+          "value": "<your-aws-secret-access-key>"
+        },
+        { "key": "AWS_REGION", "value": "us-east-1" },
+        { "key": "S3_BUCKET_NAME", "value": "neo-docs-storage" },
+        { "key": "NODE_ENV", "value": "production" }
+      ],
+      "deployCommand": "npx prisma migrate deploy"
+    },
+    {
+      "name": "worker",
+      "dockerfilePath": "backend/Dockerfile.worker",
+      "context": "./backend",
+      "envs": [
+        { "key": "DATABASE_URL", "value": "{{RAILWAY_DATABASE_URL}}" },
+        { "key": "KAFKA_BROKERS", "value": "<your-external-kafka-broker>" },
+        { "key": "AWS_ACCESS_KEY_ID", "value": "<your-aws-access-key-id>" },
+        {
+          "key": "AWS_SECRET_ACCESS_KEY",
+          "value": "<your-aws-secret-access-key>"
+        },
+        { "key": "AWS_REGION", "value": "us-east-1" },
+        { "key": "S3_BUCKET_NAME", "value": "neo-docs-storage" },
+        { "key": "NODE_ENV", "value": "production" }
+      ]
+    },
+    {
+      "name": "frontend",
+      "dockerfilePath": "frontend/Dockerfile.prod",
+      "context": "./frontend",
+      "port": 80,
+      "envs": [
+        { "key": "VITE_API_URL", "value": "https://<your-backend-url>" },
+        { "key": "VITE_SOCKET_URL", "value": "https://<your-backend-url>" }
+      ]
+    }
+  ],
+  "plugins": ["postgresql"],
+  "notes": "Kafka and Zookeeper are not natively supported on Railway. Use an external managed Kafka provider (e.g., Confluent Cloud) and update KAFKA_BROKERS accordingly. S3 credentials must be set as Railway environment variables. Run migrations using the backend service's deployCommand."
+}
