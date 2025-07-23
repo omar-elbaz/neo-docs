@@ -90,6 +90,7 @@ services:
         condition: service_healthy
     networks:
       - app-network
+      - captain-overlay-network
     restart: unless-stopped
 
   worker:
@@ -125,6 +126,7 @@ services:
       - backend
     networks:
       - app-network
+      - captain-overlay-network
     restart: unless-stopped
 
 volumes:
@@ -133,3 +135,5 @@ volumes:
 networks:
   app-network:
     driver: bridge
+  captain-overlay-network:
+    external: true
