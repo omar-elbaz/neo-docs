@@ -119,7 +119,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
     environment:
-      VITE_API_URL: ${API_URL:-http://localhost:3001}
+      VITE_API_URL: ${VITE_API_URL:-http://68.183.18.79:3001}
+      VITE_SOCKET_URL: ${VITE_SOCKET_URL:-http://68.183.18.79:3001}
     ports:
       - "8150:80"
     depends_on:
