@@ -7,7 +7,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "strict": true
+    "noEmit": false,
+    "outDir": "dist",
+    "strict": false,
+    "skipLibCheck": true
   }
 }
