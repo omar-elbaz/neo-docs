@@ -6,10 +6,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-omarelbaz}:${POSTGRES_PASSWORD}@db:5432/neodocs"
       JWT_SECRET: ${JWT_SECRET}
       NODE_ENV: production
-      KAFKA_BROKERS: ${KAFKA_BROKERS}
+      KAFKA_BROKERS: "kafka:29092"
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ${AWS_REGION}
@@ -23,8 +23,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile.worker
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      KAFKA_BROKERS: ${KAFKA_BROKERS}
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-omarelbaz}:${POSTGRES_PASSWORD}@db:5432/neodocs"
+      KAFKA_BROKERS: "kafka:29092"
       NODE_ENV: production
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
@@ -37,7 +37,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
     environment:
-      VITE_API_URL: ${VITE_API_URL}
+      VITE_API_URL: ${API_URL:-http://localhost:3001}
     ports:
       - "80:80"
     restart: unless-stopped
