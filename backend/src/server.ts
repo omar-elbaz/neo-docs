@@ -13,6 +13,7 @@ const app = Fastify();
 
 await app.register(cors, {
   origin: true, // allow all origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // explicitly allow DELETE
   // origin: ['http://localhost:5173'], // restrict to specific origin
   // credentials: true, // if you're using cookies or auth headers
 });

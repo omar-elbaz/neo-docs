@@ -26,10 +26,11 @@ export interface DocumentOperation {
 }
 
 export interface DocumentEvent {
-  type: "USER_JOIN" | "USER_LEAVE" | "CURSOR_UPDATE";
+  type: "USER_JOIN" | "USER_LEAVE" | "CURSOR_UPDATE" | "TITLE_UPDATE";
   documentId: string;
   userId: string;
   data?: any;
+  title?: string;
   timestamp: number;
 }
 

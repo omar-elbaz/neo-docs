@@ -14,6 +14,7 @@ import {
 import { getUserFromToken } from "../utils/auth.ts";
 import { getPrismaClient } from "../utils/database.ts";
 import { ensureDocumentOwnership } from "../utils/documents.ts";
+import { storageService } from "../services/storage.ts";
 
 export const documentHandlers = async (fastify: FastifyInstance) => {
   const prisma = getPrismaClient();
@@ -23,11 +24,21 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
     const user = await getUserFromToken(req);
     const body = CreateDocumentSchema.parse(req.body) as CreateDocumentRequest;
 
+    const documentId = crypto.randomUUID();
+    
+    // Store content using hybrid storage service
+    const storageResult = await storageService.storeDocument(
+      documentId,
+      body.content || {},
+      1 // initial version
+    );
+
     const document = await prisma.documents.create({
       data: {
-        id: crypto.randomUUID(),
+        id: documentId,
         title: body.title,
-        content: body.content || null,
+        content: storageResult.content,
+        filePath: storageResult.filePath,
         authorId: user.id,
         updatedAt: new Date(),
         revisionId: crypto.randomUUID(),
@@ -52,6 +63,7 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
           { document_shares: { some: { userId: user.id } } },
         ],
         isArchived: false,
+        deletedAt: null, // Exclude soft-deleted documents
       },
       include: {
         users_documents_authorIdTousers: { select: { id: true, email: true } },
@@ -75,6 +87,7 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
     const document = await prisma.documents.findFirst({
       where: {
         id,
+        deletedAt: null, // Exclude soft-deleted documents
         OR: [
           { authorId: user.id },
           { document_shares: { some: { userId: user.id } } },
@@ -98,7 +111,19 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
       return reply.status(404).send({ message: "Document not found" });
     }
 
-    return reply.send(document);
+    // Retrieve content using hybrid storage service
+    try {
+      const content = await storageService.retrieveDocument(document.content, document.filePath);
+      
+      // Return document with resolved content
+      return reply.send({
+        ...document,
+        content,
+      });
+    } catch (error) {
+      console.error(`Failed to retrieve document content for ${id}:`, error);
+      return reply.status(500).send({ message: "Failed to retrieve document content" });
+    }
   });
 
   // Update document - DISABLED for event-driven architecture
@@ -110,18 +135,34 @@ export const documentHandlers = async (fastify: FastifyInstance) => {
     });
   });
 
-  // Delete document
+  // Delete document (soft delete)
   fastify.delete("/documents/:id", async (req, reply) => {
     const user = await getUserFromToken(req);
     const { id } = req.params as { id: string };
 
     await ensureDocumentOwnership(prisma, id, user.id);
 
-    await prisma.documents.delete({
+    // Get document first to access filePath
+    const document = await prisma.documents.findUnique({
       where: { id },
+      select: { filePath: true },
     });
 
-    console.log(`Document deleted: ${id} by user ${user.id}`);
+    // Soft delete: set deletedAt timestamp instead of removing from database
+    await prisma.documents.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    // Delete from S3 if filePath exists
+    if (document?.filePath) {
+      await storageService.deleteDocument(document.filePath);
+    }
+
+    console.log(`Document soft deleted: ${id} by user ${user.id} (storage: ${storageService.getStorageMode()})`);
     return reply.send({ success: true });
   });
 

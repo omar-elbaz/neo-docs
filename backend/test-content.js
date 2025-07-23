@@ -12,7 +12,7 @@ function applyOperationToContent(currentContent, operation) {
     };
   }
 
-  console.log("Starting content:", JSON.stringify(currentContent));
+  // console.log("Starting content:", JSON.stringify(currentContent));
 
   try {
     if (operation.steps && operation.steps.length > 0) {
@@ -71,4 +71,4 @@ const testOp = {
 };
 
 const result = applyOperationToContent(null, testOp);
-console.log("Result:", JSON.stringify(result, null, 2));
+// console.log("Result:", JSON.stringify(result, null, 2));

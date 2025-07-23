@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { Server } from "socket.io";
 import { kafkaService } from "../services/kafka.ts";
-import { analyzeProseMirrorOperation, type ActivityType } from "../types/activity.ts";
+import {
+  analyzeProseMirrorOperation,
+  type ActivityType,
+} from "../types/activity.ts";
 import { getPrismaClient } from "../utils/database.ts";
 
 // Store document states and operation queues
@@ -77,27 +80,30 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
           // Load document content from database
           const prisma = getPrismaClient();
           const document = await prisma.documents.findUnique({
-            where: { id: docId }
+            where: { id: docId },
           });
-          
-          console.log(`🔍 Loading document ${docId} from database:`, {
-            found: !!document,
-            version: document?.version,
-            contentType: typeof document?.content,
-            content: document?.content
-          });
-          
+
+          // console.log(`🔍 Loading document ${docId} from database:`, {
+          //   found: !!document,
+          //   version: document?.version,
+          //   contentType: typeof document?.content,
+          //   content: document?.content
+          // });
+
           documentStates.set(docId, {
             version: document?.version || 0,
-            content: document?.content || { type: 'doc', content: [{ type: 'paragraph' }] },
+            content: document?.content || {
+              type: "doc",
+              content: [{ type: "paragraph" }],
+            },
             pendingOps: [],
           });
         } catch (error) {
-          console.error('Failed to load document content:', error);
+          console.error("Failed to load document content:", error);
           // Fallback to empty state
           documentStates.set(docId, {
             version: 0,
-            content: { type: 'doc', content: [{ type: 'paragraph' }] },
+            content: { type: "doc", content: [{ type: "paragraph" }] },
             pendingOps: [],
           });
         }
@@ -118,12 +124,12 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
 
       // Send current document state to joining user
       const docState = documentStates.get(docId)!;
-      console.log(`📤 Sending document state to client:`, {
-        docId,
-        version: docState.version,
-        contentType: typeof docState.content,
-        content: docState.content
-      });
+      // console.log(`📤 Sending document state to client:`, {
+      //   docId,
+      //   version: docState.version,
+      //   contentType: typeof docState.content,
+      //   content: docState.content
+      // });
       socket.emit("document-state", {
         version: docState.version,
         content: docState.content,
@@ -142,6 +148,16 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
       }
 
       // Broadcast user joined activity for live history
+      const prisma = getPrismaClient();
+      let joinUser = null;
+      try {
+        joinUser = await prisma.users.findUnique({
+          where: { id: userId },
+          select: { firstName: true, lastName: true, email: true },
+        });
+      } catch (err) {
+        console.error("Failed to fetch user info for join activity:", err);
+      }
       io.to(docId).emit("document-activity", {
         id: `join-${Date.now()}-${Math.random()}`,
         documentId: docId,
@@ -150,13 +166,36 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
         timestamp: new Date(),
         metadata: { socketId: socket.id },
         description: `joined the document`,
+        user: joinUser
+          ? {
+              firstName: joinUser.firstName,
+              lastName: joinUser.lastName,
+              email: joinUser.email,
+            }
+          : null,
       });
 
+      // Fetch user information for display
+      let userInfo: any = { userId, socketId: socket.id };
+      try {
+        const prisma = getPrismaClient();
+        const user = await prisma.users.findUnique({
+          where: { id: userId },
+          select: { firstName: true, lastName: true },
+        });
+        if (user) {
+          userInfo.firstName = user.firstName || undefined;
+          userInfo.lastName = user.lastName || undefined;
+        }
+      } catch (error) {
+        console.error(
+          "Failed to fetch user info for collaborator display:",
+          error
+        );
+      }
+
       // Notify others of new user
-      socket.to(docId).emit("user-joined", {
-        userId,
-        socketId: socket.id,
-      });
+      socket.to(docId).emit("user-joined", userInfo);
 
       console.log(`User ${userId} joined document ${docId}`);
     });
@@ -170,9 +209,13 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
         version: number;
         userId: string;
         content?: any;
+        isSignificant?: boolean;
+        accumulatedText?: string;
+        accumulatedChars?: number;
       }) => {
-        const { docId, operation, version, userId, content } = data;
+        const { docId, operation, version, userId, content, isSignificant } = data;
         const docState = documentStates.get(docId);
+        const prisma = getPrismaClient();
 
         if (!docState) {
           socket.emit("error", { message: "Document not found" });
@@ -181,26 +224,40 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
 
         // Handle version conflicts - accept all operations for simplicity
         if (version !== docState.version) {
-          console.log(`Operation version mismatch: client=${version}, server=${docState.version}. Proceeding with operation.`);
+          console.log(
+            `Operation version mismatch: client=${version}, server=${docState.version}. Proceeding with operation.`
+          );
         }
 
         // Apply operation to document state
         docState.version++;
         const timestamp = Date.now();
-        
+
         // Update document content - use complete content if available, otherwise apply operation
-        console.log(`Before applying operation - docState.content:`, JSON.stringify(docState.content));
+        // console.log(
+        //   `Before applying operation - docState.content:`,
+        //   JSON.stringify(docState.content)
+        // );
         if (content) {
           // Use the complete document content sent by the client (preserves formatting)
-          console.log(`🔄 Using complete content from client:`, JSON.stringify(content));
+          // console.log(
+          //   `🔄 Using complete content from client:`,
+          //   JSON.stringify(content)
+          // );
           docState.content = content;
         } else {
           // Fallback to applying ProseMirror steps (may lose formatting)
-          console.log(`⚠️  Falling back to ProseMirror step application`);
-          docState.content = applyOperationToContent(docState.content, operation);
+          // console.log(`⚠️  Falling back to ProseMirror step application`);
+          docState.content = applyOperationToContent(
+            docState.content,
+            operation
+          );
         }
-        console.log(`After applying operation - docState.content:`, JSON.stringify(docState.content));
-        
+        // console.log(
+        //   `After applying operation - docState.content:`,
+        //   JSON.stringify(docState.content)
+        // );
+
         docState.pendingOps.push({
           operation,
           userId,
@@ -208,9 +265,9 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
           timestamp,
         });
 
-        // Analyze operation for activity tracking
-        const activities = analyzeProseMirrorOperation(operation, userId);
-        
+        // Analyze operation for activity tracking - only for significant changes
+        const activities = isSignificant ? analyzeProseMirrorOperation(operation, userId) : [];
+
         // Publish to Kafka for persistence
         try {
           const kafkaMessage = {
@@ -223,7 +280,10 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
             timestamp,
             activities, // Include parsed activities
           };
-          console.log(`Publishing to Kafka with content:`, JSON.stringify(kafkaMessage.content));
+          console.log(
+            `Publishing to Kafka with content:`,
+            JSON.stringify(kafkaMessage.content)
+          );
           await kafkaService.publishDocumentOperation(kafkaMessage);
         } catch (error) {
           console.error("Failed to publish operation to Kafka:", error);
@@ -231,15 +291,32 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
 
         // Broadcast activities to clients for live history
         if (activities.length > 0) {
+          // Fetch user info once per batch
+          let opUser = null;
+          try {
+            opUser = await prisma.users.findUnique({
+              where: { id: userId },
+              select: { firstName: true, lastName: true, email: true },
+            });
+          } catch (err) {
+            console.error("Failed to fetch user info for activity:", err);
+          }
           for (const activity of activities) {
             io.to(docId).emit("document-activity", {
-              id: `${timestamp}-${Math.random()}`, // Temporary ID
+              id: `${timestamp}-${Math.random()}`,
               documentId: docId,
               userId,
               type: activity.type,
               timestamp: new Date(timestamp),
               metadata: activity.metadata,
               description: activity.description,
+              user: opUser
+                ? {
+                    firstName: opUser.firstName,
+                    lastName: opUser.lastName,
+                    email: opUser.email,
+                  }
+                : null,
             });
           }
         }
@@ -292,6 +369,41 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
       }
     );
 
+    // Handle title updates
+    socket.on(
+      "title-update",
+      async (data: { docId: string; title: string; userId: string }) => {
+        const { docId, title, userId } = data;
+
+        try {
+          // Publish title update to Kafka for persistence
+          await kafkaService.publishDocumentEvent({
+            type: "TITLE_UPDATE",
+            documentId: docId,
+            userId,
+            title,
+            timestamp: Date.now(),
+          });
+
+          // Broadcast title update to other clients in the room
+          socket.to(docId).emit("title-update", {
+            title,
+            userId,
+          });
+
+          // Acknowledge to sender
+          socket.emit("title-update-ack", {
+            title,
+          });
+
+          console.log(`Title updated for document ${docId}: "${title}"`);
+        } catch (error) {
+          console.error("Failed to update document title:", error);
+          socket.emit("error", { message: "Failed to update title" });
+        }
+      }
+    );
+
     // Handle content sync (fallback for when operations fail)
     socket.on(
       "content-sync",
@@ -316,7 +428,7 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
     );
 
     // Clean up on disconnect
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async () => {
       console.log("User disconnected:", socket.id);
 
       // Remove from all document presences
@@ -332,6 +444,16 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
           });
 
           // Broadcast user left activity for live history
+          let leftUser = null;
+          try {
+            const prisma = getPrismaClient();
+            leftUser = await prisma.users.findUnique({
+              where: { id: userInfo.userId },
+              select: { firstName: true, lastName: true, email: true },
+            });
+          } catch (err) {
+            console.error("Failed to fetch user info for leave activity:", err);
+          }
           socket.to(docId).emit("document-activity", {
             id: `leave-${Date.now()}-${Math.random()}`,
             documentId: docId,
@@ -340,6 +462,13 @@ export const registerSocketEvents = (io: Server, app: FastifyInstance) => {
             timestamp: new Date(),
             metadata: { socketId: socket.id },
             description: `left the document`,
+            user: leftUser
+              ? {
+                  firstName: leftUser.firstName,
+                  lastName: leftUser.lastName,
+                  email: leftUser.email,
+                }
+              : null,
           });
         }
       }
@@ -356,9 +485,9 @@ function applyOperationToContent(currentContent: any, operation: any): any {
       content: [
         {
           type: "paragraph",
-          content: []
-        }
-      ]
+          content: [],
+        },
+      ],
     };
   }
 
@@ -366,29 +495,29 @@ function applyOperationToContent(currentContent: any, operation: any): any {
     if (operation.steps && operation.steps.length > 0) {
       // Extract current text content
       let currentText = extractTextFromContent(currentContent);
-      
+
       // Apply each step to the current text
       for (const step of operation.steps) {
-        if (step.stepType === 'replace') {
+        if (step.stepType === "replace") {
           currentText = applyReplaceStep(currentText, step);
         }
       }
-      
+
       // Update the document content with the modified text
       return {
         type: "doc",
         content: [
           {
             type: "paragraph",
-            content: currentText ? [{ type: "text", text: currentText }] : []
-          }
-        ]
+            content: currentText ? [{ type: "text", text: currentText }] : [],
+          },
+        ],
       };
     }
 
     return currentContent;
   } catch (error) {
-    console.error('Failed to apply operation to content:', error);
+    console.error("Failed to apply operation to content:", error);
     return currentContent;
   }
 }
@@ -396,12 +525,12 @@ function applyOperationToContent(currentContent: any, operation: any): any {
 // Extract text content from ProseMirror document
 function extractTextFromContent(content: any): string {
   if (!content || !content.content) return "";
-  
+
   let text = "";
   for (const node of content.content) {
     if (node.content) {
       for (const textNode of node.content) {
-        if (textNode.type === 'text' && textNode.text) {
+        if (textNode.type === "text" && textNode.text) {
           text += textNode.text;
         }
       }
@@ -415,7 +544,7 @@ function applyReplaceStep(currentText: string, step: any): string {
   try {
     const from = step.from || 0;
     const to = step.to || 0;
-    
+
     // Extract insertion text (handle both insertions and deletions)
     let insertText = "";
     if (step.slice) {
@@ -425,11 +554,11 @@ function applyReplaceStep(currentText: string, step: any): string {
           if (node.content) {
             // Handle paragraph content
             for (const textNode of node.content) {
-              if (textNode.type === 'text' && textNode.text) {
+              if (textNode.type === "text" && textNode.text) {
                 insertText += textNode.text;
               }
             }
-          } else if (node.type === 'text' && node.text) {
+          } else if (node.type === "text" && node.text) {
             // Handle direct text nodes
             insertText += node.text;
           }
@@ -437,31 +566,43 @@ function applyReplaceStep(currentText: string, step: any): string {
       }
       // If slice.content is empty or undefined, this is a pure deletion (insertText stays "")
     }
-    
+
     // ProseMirror positions include document structure - adjust for plain text
     // Position 1 in ProseMirror doc usually means the first character (after paragraph start)
     const textFrom = Math.max(0, from - 1); // Convert ProseMirror pos to text pos
-    const textTo = Math.max(0, to - 1);     // Convert ProseMirror pos to text pos
-    
-    // Apply bounds checking 
+    const textTo = Math.max(0, to - 1); // Convert ProseMirror pos to text pos
+
+    // Apply bounds checking
     const safeFrom = Math.max(0, Math.min(textFrom, currentText.length));
     const safeTo = Math.max(safeFrom, Math.min(textTo, currentText.length));
-    
+
     // Debug position calculation
-    console.log(`Position calc: text="${currentText}" (len=${currentText.length}), proseMirror[${from}:${to}] -> text[${safeFrom}:${safeTo}]`);
-    
-    const result = currentText.substring(0, safeFrom) + insertText + currentText.substring(safeTo);
-    
+    console.log(
+      `Position calc: text="${currentText}" (len=${currentText.length}), proseMirror[${from}:${to}] -> text[${safeFrom}:${safeTo}]`
+    );
+
+    const result =
+      currentText.substring(0, safeFrom) +
+      insertText +
+      currentText.substring(safeTo);
+
     // Enhanced debugging for deletions
     if (insertText === "") {
-      console.log(`DELETE operation: "${currentText}" [${safeFrom}:${safeTo}] -> "${result}" (deleted: "${currentText.substring(safeFrom, safeTo)}")`);
+      console.log(
+        `DELETE operation: "${currentText}" [${safeFrom}:${safeTo}] -> "${result}" (deleted: "${currentText.substring(
+          safeFrom,
+          safeTo
+        )}")`
+      );
     } else {
-      console.log(`INSERT/REPLACE operation: "${currentText}" [${safeFrom}:${safeTo}] -> "${result}" (inserted: "${insertText}")`);
+      console.log(
+        `INSERT/REPLACE operation: "${currentText}" [${safeFrom}:${safeTo}] -> "${result}" (inserted: "${insertText}")`
+      );
     }
-    
+
     return result;
   } catch (error) {
-    console.error('Failed to apply replace step:', error);
+    console.error("Failed to apply replace step:", error);
     return currentText;
   }
 }
