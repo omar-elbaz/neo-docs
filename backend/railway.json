@@ -1,0 +1,20 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "dockerfilePath": "Dockerfile.prod"
+  },
+  "deploy": {
+    "startCommand": "npm start",
+    "preDeployCommand": "npx prisma migrate deploy"
+  },
+  "envs": {
+    "DATABASE_URL": "{{RAILWAY_DATABASE_URL}}",
+    "JWT_SECRET": "<your-jwt-secret>",
+    "KAFKA_BROKERS": "<your-external-kafka-broker>",
+    "AWS_ACCESS_KEY_ID": "<your-aws-access-key-id>",
+    "AWS_SECRET_ACCESS_KEY": "<your-aws-secret-access-key>",
+    "AWS_REGION": "us-east-1",
+    "S3_BUCKET_NAME": "neo-docs-storage",
+    "NODE_ENV": "production"
+  }
+}
