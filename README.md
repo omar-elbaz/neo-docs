@@ -74,6 +74,7 @@ A full-stack collaborative document editor built with React, Fastify, and real-t
 
 ### Infrastructure
 - **Docker** for containerization
+- **DigitalOcean Droplet** for hosting
 - **PostgreSQL** for metadata and document structure
 - **AWS S3** for document content storage
 - **Apache Kafka** with Zookeeper for event streaming
@@ -335,33 +336,73 @@ The system automatically detects and switches between storage modes:
 
 ## 🚀 Deployment
 
-### Production Setup
-```bash
-# Production deployment with Docker
-docker-compose -f docker-compose.prod.yml up -d
+### DigitalOcean Production Deployment
 
-# Run database migrations
-docker-compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy
-```
+The application is deployed on a DigitalOcean droplet using Docker Compose.
+
+#### Deployment Steps
+
+1. **Setup DigitalOcean Droplet**
+   ```bash
+   # SSH into your droplet
+   ssh root@your-droplet-ip
+   
+   # Clone the repository
+   git clone https://github.com/omar-elbaz/neo-docs.git
+   cd neo-docs
+   ```
+
+2. **Configure Environment Variables**
+   ```bash
+   # Create .env file with production values
+   cp .env.example .env
+   nano .env
+   ```
+
+3. **Deploy with Docker Compose**
+   ```bash
+   # Run the deployment script
+   chmod +x deploy.sh
+   ./deploy.sh
+   ```
+
+#### Access Your Application
+- **Frontend**: http://your-droplet-ip:8150
+- **Backend API**: http://your-droplet-ip:3001
+- **Database**: PostgreSQL running on port 5432 (internal)
 
 ### Environment Variables
 ```env
-# Backend Production
-DATABASE_URL="postgresql://..."
-JWT_SECRET="secure-random-string"
-KAFKA_BROKERS="kafka:29092"
-NODE_ENV="production"
+# Database Configuration
+POSTGRES_USER=omarelbaz
+POSTGRES_PASSWORD=your_secure_password
 
-# AWS S3 Storage
-AWS_ACCESS_KEY_ID="your-access-key"
-AWS_SECRET_ACCESS_KEY="your-secret-key"
-AWS_REGION="us-east-1"
-S3_BUCKET_NAME="neo-docs-storage"
+# JWT Configuration
+JWT_SECRET=your-super-long-jwt-secret-key
 
-# Frontend Production  
-VITE_API_URL="https://your-api-domain.com"
-VITE_SOCKET_URL="https://your-api-domain.com"
+# Kafka Configuration
+KAFKA_BROKERS=kafka:29092
+
+# AWS S3 Configuration (optional)
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=your-bucket-name
+
+# API Configuration
+API_URL=http://your-droplet-ip:3001
+
+# Environment
+NODE_ENV=production
 ```
+
+### Production Services
+The application runs the following Docker containers:
+- **Frontend**: React app on port 8150
+- **Backend**: Fastify API server on port 3001
+- **Worker**: Kafka consumer for document processing
+- **PostgreSQL**: Database on port 5432
+- **Kafka + Zookeeper**: Event streaming infrastructure
 
 ## 📄 License
 
