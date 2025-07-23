@@ -1,95 +1,21 @@
+version: "3.8"
+
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.4
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    networks:
-      - app-network
-    restart: unless-stopped
-
-  kafka:
-    image: confluentinc/cp-kafka:7.4.4
-    depends_on:
-      - zookeeper
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    networks:
-      - app-network
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "kafka-topics",
-          "--bootstrap-server",
-          "localhost:29092",
-          "--list",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    restart: unless-stopped
-
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: neodocs
-      POSTGRES_USER: ${POSTGRES_USER:-omarelbaz}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test:
-        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-omarelbaz} -d neodocs"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    restart: unless-stopped
-
-  migrate:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
-    environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-omarelbaz}:${POSTGRES_PASSWORD}@db:5432/neodocs"
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - app-network
-    command: ["npx", "prisma", "migrate", "deploy"]
-    restart: "no"
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
     environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-omarelbaz}:${POSTGRES_PASSWORD}@db:5432/neodocs"
+      DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       NODE_ENV: production
-      KAFKA_BROKERS: "kafka:29092"
+      KAFKA_BROKERS: ${KAFKA_BROKERS}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ${AWS_REGION}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
     ports:
       - "3001:3001"
-    depends_on:
-      db:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    networks:
-      - app-network
     restart: unless-stopped
 
   worker:
@@ -97,20 +23,13 @@ services:
       context: ./backend
       dockerfile: Dockerfile.worker
     environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-omarelbaz}:${POSTGRES_PASSWORD}@db:5432/neodocs"
-      KAFKA_BROKERS: "kafka:29092"
+      DATABASE_URL: ${DATABASE_URL}
+      KAFKA_BROKERS: ${KAFKA_BROKERS}
       NODE_ENV: production
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ${AWS_REGION}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
-    depends_on:
-      db:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    networks:
-      - app-network
     restart: unless-stopped
 
   frontend:
@@ -118,18 +37,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
     environment:
-      VITE_API_URL: ${API_URL:-http://localhost:3001}
+      VITE_API_URL: ${VITE_API_URL}
     ports:
       - "80:80"
-    depends_on:
-      - backend
-    networks:
-      - app-network
     restart: unless-stopped
-
-volumes:
-  postgres_data_prod:
-
-networks:
-  app-network:
-    driver: bridge
