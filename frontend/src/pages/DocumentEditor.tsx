@@ -94,12 +94,26 @@ export default function DocumentEditorPage() {
   }
 
   const handleTitleSave = async () => {
-    // Title updates are now handled entirely through WebSocket → Kafka → Worker
-    // For now, we'll just update local state and let WebSocket operations handle persistence
     if (!document || !title.trim()) return
     
-    setDocument({ ...document, title: title.trim() })
-    console.log('Title updated locally - consider adding WebSocket title update event')
+    try {
+      const response = await apiClient.updateDocument(document.id, {
+        title: title.trim()
+      })
+      
+      if (response.error) {
+        console.error('Failed to update title:', response.error)
+        // Revert title on error
+        setTitle(document.title)
+      } else {
+        console.log('Title updated successfully')
+        setDocument({ ...document, title: title.trim() })
+      }
+    } catch (error) {
+      console.error('Error updating title:', error)
+      // Revert title on error
+      setTitle(document.title)
+    }
   }
 
   if (loading) {

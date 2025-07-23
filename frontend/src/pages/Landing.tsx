@@ -9,6 +9,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { Link } from "react-router-dom";
+import liveDocScreenshot from "../assets/live-doc.png";
 import scribeLogo from "../assets/scribe-logo.jpg";
 import styles from "./Landing.module.css";
 
@@ -147,7 +148,7 @@ export default function Landing() {
         {/* Screenshot/mockup */}
         <Paper elevation={3} className={styles.screenshotPaper}>
           <img
-            src="/editor-screenshot.png"
+            src={liveDocScreenshot}
             alt="Scribe text editor screenshot"
             className={styles.screenshotImg}
           />

@@ -1,51 +1,31 @@
-import React, { useState, useEffect } from 'react';
 import {
+  Add,
+  Close,
+  Delete,
+  Edit,
+  FormatBold,
+  History,
+  List as ListIcon,
+  Person,
+  Title,
+} from "@mui/icons-material";
+import {
+  Avatar,
   Box,
-  Typography,
+  Chip,
+  CircularProgress,
+  Divider,
+  IconButton,
   List,
   ListItem,
-  ListItemText,
   ListItemAvatar,
-  Avatar,
-  Chip,
+  ListItemText,
   Paper,
-  IconButton,
   Tooltip,
-  Divider,
-  CircularProgress,
-} from '@mui/material';
-import {
-  History,
-  Person,
-  Edit,
-  Delete,
-  Add,
-  FormatBold,
-  Title,
-  List as ListIcon,
-  Close,
-} from '@mui/icons-material';
-// Helper function to format time distance (simple replacement for date-fns)
-function formatDistanceToNow(date: Date, options?: { addSuffix?: boolean }): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  let result = '';
-  if (diffMinutes < 1) {
-    result = 'just now';
-  } else if (diffMinutes < 60) {
-    result = `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`;
-  } else if (diffHours < 24) {
-    result = `${diffHours} hour${diffHours > 1 ? 's' : ''}`;
-  } else {
-    result = `${diffDays} day${diffDays > 1 ? 's' : ''}`;
-  }
-
-  return options?.addSuffix ? `${result} ago` : result;
-}
+  Typography,
+} from "@mui/material";
+import { formatDistanceToNow } from "date-fns";
+import React, { useEffect, useState } from "react";
 
 export interface ActivityData {
   id: string;
@@ -79,32 +59,32 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
   // Fetch activities from API
   const fetchActivities = async () => {
     if (!documentId) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
-      const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const token = localStorage.getItem("token");
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
       const response = await fetch(
         `${apiUrl}/documents/${documentId}/activities`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
         }
       );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch activities');
+        throw new Error("Failed to fetch activities");
       }
 
       const data = await response.json();
       setActivities(data.activities || []);
     } catch (err) {
-      console.error('Failed to fetch activities:', err);
-      setError('Failed to load edit history');
+      console.error("Failed to fetch activities:", err);
+      setError("Failed to load edit history");
     } finally {
       setLoading(false);
     }
@@ -119,11 +99,11 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
 
   // Listen for real-time activity updates via Socket.IO
   useEffect(() => {
-    if (!isOpen || typeof window === 'undefined') return;
+    if (!isOpen || typeof window === "undefined") return;
 
     // Access socket from window if it exists (set up in DocumentEditor)
     const socket = (window as any).documentSocket;
-    
+
     if (socket) {
       const handleActivity = (activity: any) => {
         // Add user display name
@@ -131,14 +111,14 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
           ...activity,
           timestamp: new Date(activity.timestamp).toISOString(),
         };
-        
-        setActivities(prev => [enrichedActivity, ...prev.slice(0, 99)]); // Keep last 100
+
+        setActivities((prev) => [enrichedActivity, ...prev.slice(0, 99)]); // Keep last 100
       };
 
-      socket.on('document-activity', handleActivity);
+      socket.on("document-activity", handleActivity);
 
       return () => {
-        socket.off('document-activity', handleActivity);
+        socket.off("document-activity", handleActivity);
       };
     }
   }, [isOpen]);
@@ -146,19 +126,21 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
   // Get icon for activity type
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'text_inserted':
+      case "text_inserted":
         return <Add fontSize="small" />;
-      case 'text_deleted':
+      case "text_added":
+        return <Edit fontSize="small" />;
+      case "text_deleted":
         return <Delete fontSize="small" />;
-      case 'text_formatted':
+      case "text_formatted":
         return <FormatBold fontSize="small" />;
-      case 'heading_added':
+      case "heading_added":
         return <Title fontSize="small" />;
-      case 'list_created':
+      case "list_created":
         return <ListIcon fontSize="small" />;
-      case 'user_joined':
+      case "user_joined":
         return <Person fontSize="small" color="success" />;
-      case 'user_left':
+      case "user_left":
         return <Person fontSize="small" color="error" />;
       default:
         return <Edit fontSize="small" />;
@@ -168,33 +150,33 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
   // Get color for activity type
   const getActivityColor = (type: string) => {
     switch (type) {
-      case 'text_inserted':
-        return 'success';
-      case 'text_deleted':
-        return 'error';
-      case 'text_formatted':
-        return 'info';
-      case 'user_joined':
-        return 'success';
-      case 'user_left':
-        return 'warning';
+      case "text_inserted":
+        return "success";
+      case "text_deleted":
+        return "error";
+      case "text_formatted":
+        return "info";
+      case "user_joined":
+        return "success";
+      case "user_left":
+        return "warning";
       default:
-        return 'default';
+        return "default";
     }
   };
 
   // Get user display name
-  const getUserDisplayName = (user: ActivityData['user']) => {
-    if (!user) return 'Unknown User';
+  const getUserDisplayName = (user: ActivityData["user"]) => {
+    if (!user) return "Unknownh User";
     if (user.firstName && user.lastName) {
       return `${user.firstName} ${user.lastName}`;
     }
-    return user.email.split('@')[0];
+    return user.email.split("@")[0];
   };
 
   // Get user avatar
-  const getUserAvatar = (user: ActivityData['user']) => {
-    if (!user) return 'U';
+  const getUserAvatar = (user: ActivityData["user"]) => {
+    if (!user) return "U";
     if (user.firstName && user.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`;
     }
@@ -207,21 +189,27 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
     <Paper
       elevation={3}
       sx={{
-        position: 'fixed',
+        position: "fixed",
         top: 0,
         right: 0,
         width: 350,
-        height: '100vh',
+        height: "100vh",
         zIndex: 1300,
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: 'background.paper',
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "background.paper",
       }}
     >
       {/* Header */}
-      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <History />
             <Typography variant="h6">Edit History</Typography>
           </Box>
@@ -237,9 +225,9 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
       </Box>
 
       {/* Content */}
-      <Box sx={{ flex: 1, overflow: 'auto' }}>
+      <Box sx={{ flex: 1, overflow: "auto" }}>
         {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
             <CircularProgress />
           </Box>
         )}
@@ -253,8 +241,8 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
         )}
 
         {!loading && !error && activities.length === 0 && (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <History sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+          <Box sx={{ p: 3, textAlign: "center" }}>
+            <History sx={{ fontSize: 48, color: "text.disabled", mb: 2 }} />
             <Typography variant="body2" color="text.secondary">
               No activity yet. Start editing to see live changes appear here.
             </Typography>
@@ -269,8 +257,8 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
                   sx={{
                     py: 1.5,
                     px: 2,
-                    '&:hover': {
-                      backgroundColor: 'action.hover',
+                    "&:hover": {
+                      backgroundColor: "action.hover",
                     },
                   }}
                 >
@@ -279,8 +267,8 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
                       sx={{
                         width: 32,
                         height: 32,
-                        fontSize: '0.75rem',
-                        bgcolor: 'primary.main',
+                        fontSize: "0.75rem",
+                        bgcolor: "primary.main",
                       }}
                     >
                       {getUserAvatar(activity.user)}
@@ -289,20 +277,27 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
 
                   <ListItemText
                     primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          mb: 0.5,
+                        }}
+                      >
                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
                           {getUserDisplayName(activity.user)}
                         </Typography>
                         <Chip
                           icon={getActivityIcon(activity.type)}
-                          label={activity.type.replace('_', ' ')}
+                          label={activity.type.replace("_", " ")}
                           size="small"
                           color={getActivityColor(activity.type) as any}
                           sx={{
                             height: 20,
-                            fontSize: '0.625rem',
-                            '& .MuiChip-icon': {
-                              fontSize: '0.75rem',
+                            fontSize: "0.625rem",
+                            "& .MuiChip-icon": {
+                              fontSize: "0.75rem",
                             },
                           }}
                         />
@@ -320,7 +315,7 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
                         <Typography
                           variant="caption"
                           color="text.secondary"
-                          sx={{ fontSize: '0.625rem' }}
+                          sx={{ fontSize: "0.625rem" }}
                         >
                           {formatDistanceToNow(new Date(activity.timestamp), {
                             addSuffix: true,
@@ -330,7 +325,9 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
                     }
                   />
                 </ListItem>
-                {index < activities.length - 1 && <Divider variant="inset" component="li" />}
+                {index < activities.length - 1 && (
+                  <Divider variant="inset" component="li" />
+                )}
               </React.Fragment>
             ))}
           </List>
@@ -338,8 +335,13 @@ const EditHistorySidebar: React.FC<EditHistorySidebarProps> = ({
       </Box>
 
       {/* Footer */}
-      <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider' }}>
-        <Typography variant="caption" color="text.secondary" align="center" display="block">
+      <Box sx={{ p: 1.5, borderTop: 1, borderColor: "divider" }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          align="center"
+          display="block"
+        >
           Showing activities from this session
         </Typography>
       </Box>

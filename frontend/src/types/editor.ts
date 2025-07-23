@@ -19,6 +19,8 @@ export interface CursorPosition {
 export interface CollaboratorInfo {
   userId: string;
   socketId: string;
+  firstName?: string;
+  lastName?: string;
   cursor?: number;
   selection?: CursorPosition;
 }

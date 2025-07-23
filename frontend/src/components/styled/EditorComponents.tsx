@@ -128,7 +128,9 @@ export const StatusContainer = styled(Box)({
   marginRight: 16,
 });
 
-export const StatusDot = styled(Box)<{ isConnected: boolean }>(
+export const StatusDot = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'isConnected',
+})<{ isConnected: boolean }>(
   ({ isConnected }) => ({
     width: 6,
     height: 6,
