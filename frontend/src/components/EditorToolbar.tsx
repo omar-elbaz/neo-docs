@@ -5,21 +5,19 @@ import {
   FormatListBulleted,
   FormatListNumbered,
   History,
-  Logout,
-  Settings,
   Share,
 } from "@mui/icons-material";
 import {
   Avatar,
   IconButton,
-  Menu,
-  MenuItem,
   Tooltip,
   Typography,
 } from "@mui/material";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { EditorToolbarProps } from "../types/editor";
+import { apiClient } from "../lib/api";
+import UserMenu from "./UserMenu";
 import {
   AppHeaderContainer,
   AppHeaderContent,
@@ -55,23 +53,48 @@ export default function EditorToolbar({
   onShareToggle,
 }: EditorToolbarProps) {
   const navigate = useNavigate();
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [currentUser, setCurrentUser] = useState<{
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    fullName?: string;
+  } | null>(null);
 
-  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      const response = await apiClient.getCurrentUser();
+
+      if (response.error) {
+        console.error("Failed to fetch current user:", response.error);
+        navigate("/login");
+        return;
+      }
+
+      if (response.data) {
+        setCurrentUser({
+          id: response.data.userID,
+          email: response.data.email,
+          firstName: response.data.firstName,
+          lastName: response.data.lastName,
+          fullName: response.data.fullName,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch current user:", err);
+      navigate("/login");
+    }
   };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setAnchorEl(null);
-    navigate("/login");
-  };
-
-  const isMenuOpen = Boolean(anchorEl);
 
   if (!editor) {
     return null;
@@ -108,38 +131,55 @@ export default function EditorToolbar({
           {/* Right: Collaborators and User Menu */}
           <UserContainer>
             {/* Collaborators */}
-            {collaborators.size > 0 && (
-              <CollaboratorContainer>
-                {Array.from(collaborators.values())
-                  .slice(0, 3)
-                  .map((collab, index) => (
+            {(() => {
+              // Deduplicate collaborators by userId (same user might have multiple sockets)
+              const uniqueCollaborators = new Map();
+              Array.from(collaborators.values())
+                .filter(collab => collab.userId !== userId)
+                .forEach(collab => {
+                  uniqueCollaborators.set(collab.userId, collab);
+                });
+              const otherCollaborators = Array.from(uniqueCollaborators.values());
+              
+              return otherCollaborators.length > 0 && (
+                <CollaboratorContainer>
+                  {otherCollaborators
+                    .slice(0, 3)
+                    .map((collab, index) => (
+                      <Avatar
+                        key={collab.socketId}
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          fontSize: "0.6rem",
+                          bgcolor: `hsl(${(index * 137.5) % 360}, 70%, 60%)`,
+                        }}
+                        title={`${collab.firstName || ''} ${collab.lastName || ''} (${collab.userId})`}
+                      >
+                        {(() => {
+                          const firstInitial = collab.firstName?.[0]?.toUpperCase() || '';
+                          const lastInitial = collab.lastName?.[0]?.toUpperCase() || '';
+                          return firstInitial && lastInitial 
+                            ? `${firstInitial}${lastInitial}`
+                            : collab.userId?.substring(0, 2)?.toUpperCase() || 'U';
+                        })()}
+                      </Avatar>
+                    ))}
+                  {otherCollaborators.length > 3 && (
                     <Avatar
-                      key={collab.socketId}
                       sx={{
                         width: 24,
                         height: 24,
                         fontSize: "0.6rem",
-                        bgcolor: `hsl(${(index * 137.5) % 360}, 70%, 60%)`,
+                        bgcolor: "grey.500",
                       }}
-                      title={collab.userId}
                     >
-                      {collab.userId[0]?.toUpperCase()}
+                      +{otherCollaborators.length - 3}
                     </Avatar>
-                  ))}
-                {collaborators.size > 3 && (
-                  <Avatar
-                    sx={{
-                      width: 24,
-                      height: 24,
-                      fontSize: "0.6rem",
-                      bgcolor: "grey.500",
-                    }}
-                  >
-                    +{collaborators.size - 3}
-                  </Avatar>
-                )}
-              </CollaboratorContainer>
-            )}
+                  )}
+                </CollaboratorContainer>
+              );
+            })()}
             
             {/* Share Button */}
             <Tooltip title="Share Document">
@@ -163,13 +203,7 @@ export default function EditorToolbar({
             </Tooltip>
 
             {/* User Menu */}
-            <Tooltip title="Account">
-              <IconButton onClick={handleProfileMenuOpen} size="small">
-                <Avatar sx={{ width: 24, height: 24 }}>
-                  <AccountCircle sx={{ fontSize: 16 }} />
-                </Avatar>
-              </IconButton>
-            </Tooltip>
+            <UserMenu user={currentUser} variant="avatar" size="small" />
           </UserContainer>
         </AppHeaderContent>
       </AppHeaderContainer>
@@ -274,6 +308,26 @@ export default function EditorToolbar({
                   </CompactIconButton>
                 </Tooltip>
 
+                <Tooltip title="Normal Text">
+                  <CompactIconButton
+                    onClick={() =>
+                      editor?.chain().focus().setParagraph().run()
+                    }
+                    color={
+                      editor?.isActive("paragraph") ? "primary" : "default"
+                    }
+                    size="small"
+                  >
+                    <Typography
+                      variant="caption"
+                      fontWeight="bold"
+                      fontSize="0.5rem"
+                    >
+                      ¶
+                    </Typography>
+                  </CompactIconButton>
+                </Tooltip>
+
                 <CompactDivider orientation="vertical" flexItem />
 
                 {/* Lists */}
@@ -310,44 +364,6 @@ export default function EditorToolbar({
         </FormattingToolbarWrapper>
       </FormattingToolbarContainer>
 
-      {/* User Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={isMenuOpen}
-        onClose={handleMenuClose}
-        onClick={handleMenuClose}
-        slotProps={{
-          paper: {
-            elevation: 0,
-            sx: {
-              overflow: "visible",
-              filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
-              mt: 1.5,
-              "& .MuiAvatar-root": {
-                width: 24,
-                height: 24,
-                ml: -0.5,
-                mr: 1,
-              },
-            },
-          },
-        }}
-        transformOrigin={{ horizontal: "right", vertical: "top" }}
-        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-      >
-        <MenuItem onClick={handleMenuClose}>
-          <Avatar />
-          {userId}
-        </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <Settings fontSize="small" sx={{ mr: 1 }} />
-          Settings
-        </MenuItem>
-        <MenuItem onClick={handleLogout}>
-          <Logout fontSize="small" sx={{ mr: 1 }} />
-          Logout
-        </MenuItem>
-      </Menu>
     </>
   );
 }

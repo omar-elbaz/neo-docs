@@ -3,10 +3,10 @@ import {
   Description as DocumentIcon,
   ViewModule as GridIcon,
   ViewList as ListIcon,
-  ExitToApp as LogoutIcon,
   MoreVert as MoreIcon,
-  Person as PersonIcon,
   Share as ShareIcon,
+  Delete as DeleteIcon,
+  Launch as OpenIcon,
 } from "@mui/icons-material";
 import {
   Alert,
@@ -27,9 +27,12 @@ import {
   Grid,
   IconButton,
   List,
-  ListItem,
+  ListItemButton,
   ListItemAvatar,
   ListItemText,
+  ListItemIcon,
+  Menu,
+  MenuItem,
   Paper,
   TextField,
   ToggleButton,
@@ -40,6 +43,8 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient, type DocumentResponse } from "../lib/api";
+import ShareDocumentModal from "../components/ShareDocumentModal";
+import UserMenu from "../components/UserMenu";
 
 type ViewMode = "grid" | "list";
 
@@ -49,7 +54,6 @@ export default function DashboardMUI() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showUserModal, setShowUserModal] = useState(false);
   const [newDocTitle, setNewDocTitle] = useState("");
   const [creating, setCreating] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -60,6 +64,11 @@ export default function DashboardMUI() {
     lastName?: string;
     fullName?: string;
   } | null>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentResponse | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchDocuments();
@@ -170,9 +179,73 @@ export default function DashboardMUI() {
     );
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, doc: DocumentResponse) => {
+    console.log('Menu clicked for document:', doc.title, doc.id);
+    setAnchorEl(event.currentTarget);
+    setSelectedDocument(doc);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleMenuCloseAndClear = () => {
+    setAnchorEl(null);
+    setSelectedDocument(null);
+  };
+
+  const handleOpenDocument = () => {
+    if (selectedDocument) {
+      navigate(`/documents/${selectedDocument.id}`);
+    }
+    handleMenuCloseAndClear();
+  };
+
+  const handleShareDocument = () => {
+    handleMenuClose();
+    setTimeout(() => {
+      setShowShareModal(true);
+    }, 100);
+  };
+
+  const handleDeleteDocument = () => {
+    console.log('handleDeleteDocument called, selectedDocument:', selectedDocument);
+    handleMenuClose();
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteDocument = async () => {
+    console.log('Delete button clicked, selectedDocument:', selectedDocument);
+    
+    if (!selectedDocument) {
+      console.log('No selected document, returning');
+      return;
+    }
+
+    setDeleting(true);
+    console.log('Starting delete process for document:', selectedDocument.id);
+    
+    try {
+      const response = await apiClient.deleteDocument(selectedDocument.id);
+      console.log('Delete API response:', response);
+
+      if (response.error) {
+        console.error('API returned error:', response.error);
+        throw new Error(response.error);
+      }
+
+      console.log('Delete successful, updating document list');
+      setDocuments((prev) => prev.filter((doc) => doc.id !== selectedDocument.id));
+      setMessage("Document has been deleted successfully.");
+      setShowDeleteConfirm(false);
+      setSelectedDocument(null);
+    } catch (err) {
+      console.error('Failed to delete document:', err);
+      setMessage("Failed to delete document. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -232,20 +305,7 @@ export default function DashboardMUI() {
               </ToggleButton>
             </ToggleButtonGroup>
 
-            <IconButton
-              onClick={() => setShowUserModal(true)}
-              sx={{
-                bgcolor: "grey.200",
-                "&:hover": { bgcolor: "grey.300" },
-                width: 40,
-                height: 40,
-              }}
-              title={
-                currentUser?.fullName || currentUser?.email || "User Profile"
-              }
-            >
-              <PersonIcon sx={{ color: "grey.600" }} />
-            </IconButton>
+            <UserMenu user={currentUser} variant="button" />
           </Box>
         </Toolbar>
       </AppBar>
@@ -348,7 +408,13 @@ export default function DashboardMUI() {
                           />
                         )}
                       </Box>
-                      <IconButton size="small">
+                      <IconButton 
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMenuClick(e, doc);
+                        }}
+                      >
                         <MoreIcon />
                       </IconButton>
                     </Box>
@@ -389,8 +455,7 @@ export default function DashboardMUI() {
           <Paper elevation={1}>
             <List>
               {/* Create New Item */}
-              <ListItem
-                button
+              <ListItemButton
                 onClick={() => setShowCreateModal(true)}
                 sx={{ borderBottom: 1, borderColor: "divider" }}
               >
@@ -407,13 +472,12 @@ export default function DashboardMUI() {
                   }
                   secondary="Start writing your next document"
                 />
-              </ListItem>
+              </ListItemButton>
 
               {/* Document Items */}
               {documents.map((doc) => (
-                <ListItem
+                <ListItemButton
                   key={doc.id}
-                  button
                   onClick={() => navigate(`/documents/${doc.id}`)}
                   sx={{ borderBottom: 1, borderColor: "divider" }}
                 >
@@ -447,11 +511,17 @@ export default function DashboardMUI() {
                         variant="outlined"
                       />
                     )}
-                    <IconButton edge="end">
+                    <IconButton 
+                      edge="end"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMenuClick(e, doc);
+                      }}
+                    >
                       <MoreIcon />
                     </IconButton>
                   </Box>
-                </ListItem>
+                </ListItemButton>
               ))}
             </List>
           </Paper>
@@ -549,116 +619,91 @@ export default function DashboardMUI() {
         </DialogActions>
       </Dialog>
 
-      {/* User Profile Modal */}
+
+      {/* Document Action Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuCloseAndClear}
+      >
+        <MenuItem onClick={handleOpenDocument}>
+          <ListItemIcon>
+            <OpenIcon fontSize="small" />
+          </ListItemIcon>
+          Open Document
+        </MenuItem>
+        <MenuItem onClick={handleShareDocument}>
+          <ListItemIcon>
+            <ShareIcon fontSize="small" />
+          </ListItemIcon>
+          Share Document
+        </MenuItem>
+        <MenuItem 
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDeleteDocument();
+          }} 
+          sx={{ color: 'error.main' }}
+        >
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
+          </ListItemIcon>
+          Delete Document
+        </MenuItem>
+      </Menu>
+
+      {/* Delete Confirmation Dialog */}
       <Dialog
-        open={showUserModal}
-        onClose={() => setShowUserModal(false)}
+        open={showDeleteConfirm}
+        onClose={() => {
+          if (!deleting) {
+            setShowDeleteConfirm(false);
+            setSelectedDocument(null);
+          }
+        }}
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Box display="flex" alignItems="center" gap={2}>
-            <Avatar sx={{ bgcolor: "primary.main" }}>
-              <PersonIcon />
-            </Avatar>
-            <Box>
-              <Typography variant="h6">
-                {currentUser?.fullName ||
-                  `${currentUser?.firstName || ""} ${
-                    currentUser?.lastName || ""
-                  }`.trim() ||
-                  "User"}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {currentUser?.email}
-              </Typography>
-            </Box>
-          </Box>
-        </DialogTitle>
+        <DialogTitle sx={{ color: 'error.main' }}>Delete Document</DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
-                >
-                  Email
-                </Typography>
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
-                  <Typography variant="body2">{currentUser?.email}</Typography>
-                </Paper>
-              </Grid>
-
-              <Grid item xs={6}>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
-                >
-                  First Name
-                </Typography>
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
-                  <Typography variant="body2">
-                    {currentUser?.firstName || "Not set"}
-                  </Typography>
-                </Paper>
-              </Grid>
-
-              <Grid item xs={6}>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
-                >
-                  Last Name
-                </Typography>
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
-                  <Typography variant="body2">
-                    {currentUser?.lastName || "Not set"}
-                  </Typography>
-                </Paper>
-              </Grid>
-
-              <Grid item xs={12}>
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
-                >
-                  User ID
-                </Typography>
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: "grey.50" }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: "monospace",
-                      fontSize: "0.75rem",
-                      color: "text.secondary",
-                    }}
-                  >
-                    {currentUser?.id}
-                  </Typography>
-                </Paper>
-              </Grid>
-            </Grid>
-          </Box>
+          <Typography>
+            Are you sure you want to delete this file? This action cannot be undone.
+          </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setShowUserModal(false)} color="inherit">
-            Close
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setShowDeleteConfirm(false);
+              setSelectedDocument(null);
+            }}
+            disabled={deleting}
+          >
+            Cancel
           </Button>
           <Button
-            onClick={handleLogout}
+            onClick={confirmDeleteDocument}
             variant="contained"
             color="error"
-            startIcon={<LogoutIcon />}
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={16} /> : <DeleteIcon />}
           >
-            Logout
+            {deleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Share Document Modal */}
+      {selectedDocument && (
+        <ShareDocumentModal
+          isOpen={showShareModal}
+          onClose={() => {
+            setShowShareModal(false);
+            setSelectedDocument(null);
+          }}
+          documentId={selectedDocument.id}
+          documentTitle={selectedDocument.title}
+        />
+      )}
     </Box>
   );
 }
