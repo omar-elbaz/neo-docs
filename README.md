@@ -12,12 +12,12 @@ A full-stack collaborative document editor built with React, Fastify, and real-t
                                               │
                                               │ HTTP API
                                               ▼
-                                     ┌──────────────────┐
-                                     │   PostgreSQL     │
-                                     │    Database      │
-                                     └──────────────────┘
+                            ┌──────────────────┬──────────────────┐
+                            │   PostgreSQL     │   AWS S3         │
+                            │  (Metadata)      │ (File Storage)   │
+                            └──────────────────┴──────────────────┘
                                               ▲
-                                              │
+                                              │ Hybrid Storage
 ┌─────────────────┐    Consume       ┌──────────────────┐
 │  Kafka Worker   │ ←──────────────── │   Apache Kafka   │
 │  (Persistence)  │     Messages     │  (Event Queue)   │
@@ -37,6 +37,7 @@ A full-stack collaborative document editor built with React, Fastify, and real-t
 - **Real-time collaborative editing** with multiple users
 - **User authentication** with JWT and bcrypt
 - **Document CRUD operations** with sharing permissions
+- **Hybrid storage system** - PostgreSQL + AWS S3
 - **Live cursor tracking** and user presence indicators
 - **Event-driven architecture** with Kafka for reliability
 - **Rich text editing** with TipTap/ProseMirror
@@ -46,6 +47,7 @@ A full-stack collaborative document editor built with React, Fastify, and real-t
 - **TypeScript** throughout the stack for type safety
 - **Real-time updates** using Socket.IO WebSockets
 - **Event sourcing** with Kafka message queue
+- **Hybrid storage** - PostgreSQL metadata + S3 file storage
 - **Database persistence** with Prisma ORM
 - **Modern UI** with Material-UI components
 - **Protected routes** and authentication middleware
@@ -65,13 +67,15 @@ A full-stack collaborative document editor built with React, Fastify, and real-t
 - **Fastify** with TypeScript
 - **Socket.IO** for WebSocket connections
 - **Prisma ORM** with PostgreSQL
+- **AWS S3** for file storage
 - **Apache Kafka** for event streaming
 - **JWT + bcrypt** for authentication
 - **Zod** for request validation
 
 ### Infrastructure
 - **Docker** for containerization
-- **PostgreSQL** for primary database
+- **PostgreSQL** for metadata and document structure
+- **AWS S3** for document content storage
 - **Apache Kafka** with Zookeeper for event streaming
 - **Prisma Studio** for database management
 
@@ -113,6 +117,12 @@ If you prefer to run services individually:
    JWT_SECRET="your-jwt-secret"
    KAFKA_BROKERS="localhost:9092"
    PORT=3001
+   
+   # AWS S3 Configuration (optional - will use PostgreSQL only if not set)
+   AWS_ACCESS_KEY_ID="your-access-key"
+   AWS_SECRET_ACCESS_KEY="your-secret-key"
+   AWS_REGION="us-east-1"
+   S3_BUCKET_NAME="neo-docs-storage"
    ```
 
 2. **Install dependencies**
@@ -161,7 +171,9 @@ neo-docs/
 │   │   │   ├── auth/         # Authentication routes
 │   │   │   └── documents.ts  # Document CRUD routes
 │   │   ├── websocket/        # Socket.IO handlers
-│   │   ├── services/         # Business logic & Kafka
+│   │   ├── services/         # Business logic & storage
+│   │   │   ├── s3.ts         # AWS S3 service
+│   │   │   └── storage.ts    # Hybrid storage service
 │   │   ├── schema/           # Zod validation schemas
 │   │   ├── utils/            # Utility functions
 │   │   ├── server.ts         # Fastify server setup
@@ -261,26 +273,36 @@ neo-docs/
    - Add backup and disaster recovery
    - User permission management UI
 
-## 🤖 How AI Was Used
+## 🎯 Storage Architecture
 
-### Development Assistance
-- **Architecture Design**: Used AI to evaluate different approaches for real-time collaboration (WebRTC vs WebSocket, direct DB vs event sourcing)
-- **Code Generation**: Generated boilerplate for Prisma schemas, API routes, and React components
-- **Problem Solving**: Debugged complex issues with Kafka message ordering and WebSocket state management
-- **Documentation**: Generated comprehensive API documentation and setup instructions
+### Hybrid Storage System
+The application uses a **hybrid storage approach** that combines the best of both worlds:
 
-### Specific AI Contributions
-- Designed the Kafka event flow architecture
-- Generated TypeScript types from Prisma schema
-- Created Material-UI component patterns
-- Wrote Docker configuration for development environment
-- Generated test data and migration scripts
+**PostgreSQL (Metadata & Structure)**:
+- Document metadata (title, author, permissions, timestamps)
+- User authentication and sharing permissions
+- Document relationships and access control
+- Fast queries for document lists and user management
 
-### AI Limitations Encountered
-- Had to manually fine-tune WebSocket event handling
-- Required custom logic for document state synchronization
-- Needed to implement custom validation beyond what AI suggested
-- Database performance optimization required domain expertise
+**AWS S3 (Content Storage)**:
+- Document content and rich text data
+- Scalable file storage for large documents
+- Automatic backup and versioning
+- Cost-effective long-term storage
+
+### Storage Modes
+The system automatically detects and switches between storage modes:
+
+1. **PostgreSQL-only mode**: When S3 credentials are not configured
+2. **Hybrid mode**: When S3 is configured - stores metadata in PostgreSQL and content in S3
+3. **Graceful fallback**: If S3 fails, automatically falls back to PostgreSQL storage
+
+### Benefits
+- **Performance**: Fast metadata queries with PostgreSQL
+- **Scalability**: Unlimited document storage with S3
+- **Reliability**: Automatic fallback ensures high availability
+- **Cost-effective**: Pay only for S3 storage you use
+- **Future-proof**: Easy migration path as your application grows
 
 ## 🔧 API Endpoints
 
@@ -329,6 +351,12 @@ DATABASE_URL="postgresql://..."
 JWT_SECRET="secure-random-string"
 KAFKA_BROKERS="kafka:29092"
 NODE_ENV="production"
+
+# AWS S3 Storage
+AWS_ACCESS_KEY_ID="your-access-key"
+AWS_SECRET_ACCESS_KEY="your-secret-key"
+AWS_REGION="us-east-1"
+S3_BUCKET_NAME="neo-docs-storage"
 
 # Frontend Production  
 VITE_API_URL="https://your-api-domain.com"

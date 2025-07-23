@@ -77,6 +77,10 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       NODE_ENV: production
       KAFKA_BROKERS: "kafka:29092"
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
     ports:
       - "3001:3001"
     depends_on:
@@ -96,6 +100,10 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-omarelbaz}:${POSTGRES_PASSWORD}@db:5432/neodocs"
       KAFKA_BROKERS: "kafka:29092"
       NODE_ENV: production
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
     depends_on:
       db:
         condition: service_healthy
