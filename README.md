@@ -1,4 +1,4 @@
-# Neo-Docs - Collaborative Document Editor
+# Scribe - Collaborative Document Editor
 
 A full-stack collaborative document editor built with React, Fastify, and real-time editing capabilities. This project demonstrates modern web development practices with TypeScript, event-driven architecture, and real-time collaboration.
 
